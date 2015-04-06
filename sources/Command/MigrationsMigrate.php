@@ -1,59 +1,27 @@
 <?php
 /**
- * Class MigrationMigrate
+ * Class MigrationsMigrate
  */
 namespace Moro\Migration\Command;
-use \Symfony\Component\Console\Command\Command;
 use \Symfony\Component\Console\Input\InputInterface;
 use \Symfony\Component\Console\Output\OutputInterface;
 use \Symfony\Component\Console\Formatter\OutputFormatter;
 use \Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use \Moro\Migration\MigrationManager;
-use \SplObserver;
 use \SplSubject;
 
 /**
- * Class MigrationMigrate
+ * Class MigrationsMigrate
  * @package Moro\Migration\Command
  */
-class MigrationMigrate extends Command implements SplObserver
+class MigrationsMigrate extends AbstractCommand
 {
-	/**
-	 * @var MigrationManager
-	 */
-	protected $_manager;
-
-	/**
-	 * @var InputInterface
-	 */
-	protected $_input;
-
-	/**
-	 * @var OutputInterface
-	 */
-	protected $_output;
-
-	/**
-	 * @var int
-	 */
-	protected $_lastState;
-
-	/**
-	 * @param MigrationManager $manager
-	 */
-	public function __construct(MigrationManager $manager)
-	{
-		$this->_manager = $manager;
-		$manager->attach($this);
-		parent::__construct();
-	}
-
 	/**
 	 * Configures the current command.
 	 */
 	protected function configure()
 	{
-		$this->setName('migration:migrate')
+		$this->setName(defined('CLI_NAMESPACE_MIGRATIONS') ? 'migrate' : 'migrations:migrate')
 			->setDescription('Apply or roll back the migrations to synchronize environment with the current code state')
 			->ignoreValidationErrors();
 	}
@@ -74,7 +42,7 @@ class MigrationMigrate extends Command implements SplObserver
 			$formatter->setStyle('error', new OutputFormatterStyle('red'));
 			$output->setFormatter($formatter);
 
-			$this->_manager->migrate($output);
+			$this->_manager->doMigrate($output);
 		}
 		finally
 		{

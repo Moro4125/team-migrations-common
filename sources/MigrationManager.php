@@ -23,6 +23,8 @@ use \Exception;
  */
 class MigrationManager implements SplSubject
 {
+	const VERSION = '0.2.0';
+
 	const EVENT_INIT_SERVICE           = 'migration.init_service';
 	const EVENT_ASK_MIGRATION_LIST     = 'migration.ask_migration_list';
 	const EVENT_ASK_MIGRATION_APPEND   = 'migration.ask_migration_append';
@@ -54,10 +56,11 @@ class MigrationManager implements SplSubject
 	const ERROR_EVENT_NOT_RECEIVE  = 'Service "%1$s" does not receive event "%2$s"';
 	const ERROR_WRONG_EVENT_RESULT = 'Wrong result of event %1$s: %2$s';
 
-	const STATE_INITIALIZED        = 1;
-	const STATE_FIRED              = 2;
-	const STATE_FIND_MIGRATIONS    = 3;
-	const STATE_MIGRATIONS_ASKED   = 4;
+	const STATE_INITIALIZED        = 0;
+	const STATE_FIRED              = 1;
+	const STATE_FIND_MIGRATIONS    = 2;
+	const STATE_MIGRATIONS_ASKED   = 3;
+	const STATE_MIGRATION_STORED   = 4;
 	const STATE_MIGRATION_ROLLBACK = 5;
 	const STATE_MIGRATION_APPLY    = 6;
 	const STATE_ERROR              = 7;
@@ -339,11 +342,62 @@ class MigrationManager implements SplSubject
 	}
 
 	/**
+	 * Execute status command.
+	 */
+	public function doStatus()
+	{
+		assert($this->_dispatcher);
+		assert($this->_container);
+
+		$this->_clearStatProperties();
+		$this->_dispatcher->dispatch(self::EVENT_INIT_SERVICE, OnInitService::create());
+
+		try
+		{
+			$this->notify(self::STATE_FIRED);
+
+			$modulesAndFiles = $this->_findModulesAndMigrationFiles();
+			$migrations      = $this->_parseMigrationFiles($modulesAndFiles);
+
+			$this->notify(self::STATE_FIND_MIGRATIONS);
+
+			$actions         = $this->_askMigrationList($modulesAndFiles, $migrations);
+			$actions         = $this->_sortMigrationsList($actions);
+
+			$this->notify(self::STATE_MIGRATIONS_ASKED);
+			$states = [self::STATE_MIGRATION_STORED, self::STATE_MIGRATION_ROLLBACK, self::STATE_MIGRATION_APPLY];
+
+			foreach (array_combine($states, [$actions[2], $actions[0], $actions[1]]) as $state => $migrations)
+			{
+				foreach (array_keys($migrations) as $migrationName)
+				{
+					$this->_stateMigrationName = $migrationName;
+					$this->notify($state);
+				}
+			}
+
+			$this->notify(self::STATE_COMPLETE);
+		}
+		catch (Exception $exception)
+		{
+			$this->_printError($exception);
+			$this->notify(self::STATE_COMPLETE);
+		}
+		finally
+		{
+			$this->_stateMigrationName = null;
+			$this->_state = self::STATE_INITIALIZED;
+
+			$this->_dispatcher->dispatch(self::EVENT_FREE_SERVICE, OnFreeService::create());
+		}
+	}
+
+	/**
 	 * Execute migration command.
 	 *
 	 * @param OutputInterface $output
 	 */
-	public function migrate(OutputInterface $output)
+	public function doMigrate(OutputInterface $output)
 	{
 		assert($this->_dispatcher);
 		assert($this->_container);
@@ -619,7 +673,7 @@ class MigrationManager implements SplSubject
 	 */
 	protected function _askMigrationList(array $modules, array $migrations)
 	{
-		$actions = [ [], [] ];
+		$actions = [ [], [], [] ];
 
 		foreach ($migrations as $service => $list)
 		{
@@ -648,7 +702,9 @@ class MigrationManager implements SplSubject
 				}
 			}
 
-			foreach ([array_diff_key($result, $list), array_diff_key($list, $result)] as $mode => $tempList)
+			$temp = [array_diff_key($result, $list), array_diff_key($list, $result), array_intersect_key($list, $result)];
+
+			foreach ($temp as $mode => $tempList)
 			{
 				$target = &$actions[$mode];
 
