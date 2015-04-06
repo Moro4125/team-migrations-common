@@ -37,13 +37,29 @@ abstract class AbstractCommand extends Command implements SplObserver
 	protected $_lastState;
 
 	/**
+	 * @var bool
+	 */
+	protected $_hasErrors;
+
+	/**
 	 * @param MigrationManager $manager
 	 */
 	public function __construct(MigrationManager $manager)
 	{
 		$this->_manager = $manager;
-		$manager->attach($this);
 		parent::__construct();
+	}
+
+	/**
+	 * @param InputInterface $input
+	 * @param OutputInterface $output
+	 */
+	protected function initialize(InputInterface $input, OutputInterface $output)
+	{
+		$this->_manager->attach($this);
+		$this->_input = $input;
+		$this->_output = $output;
+		$this->_lastState = 0;
 	}
 
 	/**

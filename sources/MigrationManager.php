@@ -23,13 +23,13 @@ use \Exception;
  */
 class MigrationManager implements SplSubject
 {
-	const VERSION = '0.2.0';
+	const VERSION = '0.2.1';
 
-	const EVENT_INIT_SERVICE           = 'migration.init_service';
-	const EVENT_ASK_MIGRATION_LIST     = 'migration.ask_migration_list';
-	const EVENT_ASK_MIGRATION_APPEND   = 'migration.ask_migration_append';
-	const EVENT_ASK_MIGRATION_ROLLBACK = 'migration.ask_migration_rollback';
-	const EVENT_FREE_SERVICE           = 'migration.free_service';
+	const EVENT_INIT_SERVICE           = 'team.migrations.init_service';
+	const EVENT_ASK_MIGRATION_LIST     = 'team.migrations.ask_migration_list';
+	const EVENT_ASK_MIGRATION_APPEND   = 'team.migrations.ask_migration_append';
+	const EVENT_ASK_MIGRATION_ROLLBACK = 'team.migrations.ask_migration_rollback';
+	const EVENT_FREE_SERVICE           = 'team.migrations.free_service';
 
 	const COMPOSER_FILE = 'composer.json';
 
@@ -53,7 +53,7 @@ class MigrationManager implements SplSubject
 	const ERROR_EMPTY_INI_SECTION  = 'File "%1$s.ini" does not have section "%2$s" or section is empty.';
 	const ERROR_UNKNOWN_FILTER     = 'File "%1$s.ini" has unknown filter "%2$s" in same section.';
 	const ERROR_RECURSION          = 'File "%1$s.ini" has recursion in filter conditions.';
-	const ERROR_EVENT_NOT_RECEIVE  = 'Service "%1$s" does not receive event "%2$s"';
+	const ERROR_EVENT_NOT_RECEIVE  = 'Service "team.migrations.%1$s" does not receive event "%2$s"';
 	const ERROR_WRONG_EVENT_RESULT = 'Wrong result of event %1$s: %2$s';
 
 	const STATE_INITIALIZED        = 0;
@@ -684,6 +684,7 @@ class MigrationManager implements SplSubject
 			if (!$event->isPropagationStopped())
 			{
 				$this->_printError(sprintf(self::ERROR_EVENT_NOT_RECEIVE, $service, self::EVENT_ASK_MIGRATION_LIST));
+				($error = $event->getErrorMessage()) && $this->_printError('Error: '.$error);
 				continue;
 			}
 

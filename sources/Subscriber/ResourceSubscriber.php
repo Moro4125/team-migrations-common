@@ -21,7 +21,10 @@ class ResourceSubscriber extends AbstractSubscriber
 	const MIGRATION_FOLDER   = '.migrations';
 	const DATE_TIME_FORMAT   = 'Y-m-d H:i:s';
 	const COMPOSER_FILE      = 'composer.json';
-	const ERROR_UNKNOWN_TYPE = 'Unknown migration type "%1$s" in migration $2$s.';
+
+	const ERROR_EMPTY_STORAGE_PATH = 'Property "storagePath" is empty.';
+	const ERROR_BAD_STORAGE_PATH   = 'Access to storage path "%1$s" is denied.';
+	const ERROR_UNKNOWN_TYPE       = 'Unknown migration type "%1$s" in migration $2$s.';
 
 	const KEY_NAME      = 'name';
 	const KEY_TYPE      = 'type';
@@ -35,7 +38,7 @@ class ResourceSubscriber extends AbstractSubscriber
 	/**
 	 * @var string  The name of service for save migration information.
 	 */
-	protected $_serviceName = 'migration.resources';
+	protected $_serviceName = 'team.migrations.resources';
 
 	/**
 	 * @var string  The root path of current project.
@@ -107,8 +110,15 @@ class ResourceSubscriber extends AbstractSubscriber
 	 */
 	protected function _onAskMigrationList(OnAskMigrationList $event)
 	{
-		if (empty($this->_storagePath) || !file_exists($this->_storagePath) || !is_dir($this->_storagePath))
+		if (empty($this->_storagePath))
 		{
+			$event->setErrorMessage(self::ERROR_EMPTY_STORAGE_PATH);
+			return false;
+		}
+
+		if (!file_exists($this->_storagePath) || !is_dir($this->_storagePath) || !is_writable($this->_storagePath))
+		{
+			$event->setErrorMessage(sprintf(self::ERROR_BAD_STORAGE_PATH, $this->_storagePath));
 			return false;
 		}
 
@@ -149,11 +159,6 @@ class ResourceSubscriber extends AbstractSubscriber
 	 */
 	protected function _onAskMigrationApply(OnAskMigrationApply $event)
 	{
-		if (empty($this->_storagePath) || !file_exists($this->_storagePath) || !is_dir($this->_storagePath))
-		{
-			return false;
-		}
-
 		$pathMigrations = $this->getMigrationsPath();
 
 		if ($step = $event->getStep())
@@ -207,11 +212,6 @@ class ResourceSubscriber extends AbstractSubscriber
 	 */
 	protected function _onAskMigrationRollback(OnAskMigrationRollback $event)
 	{
-		if (empty($this->_storagePath) || !file_exists($this->_storagePath) || !is_dir($this->_storagePath))
-		{
-			return false;
-		}
-
 		$step = $event->getStep();
 		$name = preg_replace('~[^-A-Za-z0-9.]~', '_', strtr($event->getMigrationName(), ':', '.')).'.'.$step;
 		$file = $this->getMigrationsPath().DIRECTORY_SEPARATOR.sha1($name);

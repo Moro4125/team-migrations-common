@@ -33,22 +33,13 @@ class MigrationsMigrate extends AbstractCommand
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
-		try
-		{
-			$this->_input = $input;
-			$this->_output = $output;
+		$formatter = new OutputFormatter(true);
+		$formatter->setStyle('error', new OutputFormatterStyle('red'));
+		$output->setFormatter($formatter);
 
-			$formatter = new OutputFormatter(true);
-			$formatter->setStyle('error', new OutputFormatterStyle('red'));
-			$output->setFormatter($formatter);
+		$this->_manager->doMigrate($output);
 
-			$this->_manager->doMigrate($output);
-		}
-		finally
-		{
-			$this->_input = null;
-			$this->_output = null;
-		}
+		return (int)$this->_hasErrors;
 	}
 
 	/**
@@ -56,7 +47,7 @@ class MigrationsMigrate extends AbstractCommand
 	 */
 	public function update(SplSubject $subject)
 	{
-		if ($subject instanceof MigrationManager && $this->_input && $this->_output)
+		if ($subject instanceof MigrationManager)
 		{
 			switch ($subject->getState())
 			{
@@ -105,6 +96,7 @@ class MigrationsMigrate extends AbstractCommand
 
 				case MigrationManager::STATE_ERROR:
 					$this->_output->writeln('  <error>'.$subject->getStateLastError().'</error>');
+					$this->_hasErrors = true;
 					break;
 
 				case MigrationManager::STATE_BREAK:

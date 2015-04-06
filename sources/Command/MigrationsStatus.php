@@ -33,22 +33,13 @@ class MigrationsStatus extends AbstractCommand
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
-		try
-		{
-			$this->_input = $input;
-			$this->_output = $output;
+		$formatter = new OutputFormatter(true);
+		$formatter->setStyle('error', new OutputFormatterStyle('red'));
+		$output->setFormatter($formatter);
 
-			$formatter = new OutputFormatter(true);
-			$formatter->setStyle('error', new OutputFormatterStyle('red'));
-			$output->setFormatter($formatter);
+		$this->_manager->doStatus();
 
-			$this->_manager->doStatus();
-		}
-		finally
-		{
-			$this->_input = null;
-			$this->_output = null;
-		}
+		return (int)$this->_hasErrors;
 	}
 
 	/**
@@ -56,7 +47,7 @@ class MigrationsStatus extends AbstractCommand
 	 */
 	public function update(SplSubject $subject)
 	{
-		if ($subject instanceof MigrationManager && $this->_input && $this->_output)
+		if ($subject instanceof MigrationManager)
 		{
 			switch ($subject->getState())
 			{
@@ -93,15 +84,19 @@ class MigrationsStatus extends AbstractCommand
 
 				case MigrationManager::STATE_ERROR:
 					$this->_output->writeln('  <error>'.$subject->getStateLastError().'</error>');
+					$this->_hasErrors = true;
 					break;
 
 				case MigrationManager::STATE_COMPLETE:
-					$storedCount = $subject->getStatMigrationsTotal() - $subject->getStatMigrationForCommit();
+					if (!$subject->getStatErrors())
+					{
+						$storedCount = $subject->getStatMigrationsTotal() - $subject->getStatMigrationForCommit();
 
-					$this->_output->writeln('');
-					$this->_output->writeln('Migrations was applied:  '.$storedCount);
-					$this->_output->writeln('Migrations for rollback: '.$subject->getStatMigrationForRollback());
-					$this->_output->writeln('Migrations for commit:   '.$subject->getStatMigrationForCommit());
+						$this->_output->writeln('');
+						$this->_output->writeln('Migrations was applied:  '.$storedCount);
+						$this->_output->writeln('Migrations for rollback: '.$subject->getStatMigrationForRollback());
+						$this->_output->writeln('Migrations for perform:  '.$subject->getStatMigrationForCommit());
+					}
 					break;
 			}
 

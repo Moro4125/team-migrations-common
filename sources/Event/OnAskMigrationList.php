@@ -16,6 +16,11 @@ class OnAskMigrationList extends AbstractEvent
 	protected $_migrations;
 
 	/**
+	 * @var string
+	 */
+	protected $_errorMessage;
+
+	/**
 	 * @param array $list
 	 * @return $this
 	 */
@@ -33,5 +38,25 @@ class OnAskMigrationList extends AbstractEvent
 	public function getMigrations()
 	{
 		return $this->_migrations ?: [];
+	}
+
+	/**
+	 * @param string $message
+	 * @return $this
+	 */
+	public function setErrorMessage($message)
+	{
+		assert(is_string($message));
+
+		$this->_errorMessage = $message;
+		return $this;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getErrorMessage()
+	{
+		return (string)$this->_errorMessage;
 	}
 }

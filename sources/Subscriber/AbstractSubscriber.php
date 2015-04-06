@@ -24,7 +24,7 @@ abstract class AbstractSubscriber implements EventSubscriberInterface
 	/**
 	 * @var string  The name of service for save migration information.
 	 */
-	protected $_serviceName = '';
+	protected $_serviceName;
 
 	/**
 	 * @var OutputInterface
