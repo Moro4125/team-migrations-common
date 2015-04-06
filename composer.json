@@ -1,0 +1,23 @@
+{
+  "name": "moro/team-migrations-common",
+  "type": "library",
+  "version": "0.1.0",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Andrey Morozkin",
+      "email":"andrey.dmitrievich@gmail.com",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=5.5.16",
+    "symfony/console": ">=v2.6",
+    "symfony/event-dispatcher": ">=2.0",
+    "symfony/finder": "2.0.7"
+  },
+  "autoload": {
+    "psr-4": { "Moro\\Migration\\": "sources/" }
+  },
+  "bin": ["bin/migration.migrate.php"]
+}
