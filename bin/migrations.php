@@ -19,7 +19,7 @@ for ($projectPath = $currentPath = dirname(__DIR__); strlen($currentPath) > 3; $
 }
 
 /** @noinspection PhpIncludeInspection */
-require "$projectPath/vendor/autoload.php";
+require_once "$projectPath/vendor/autoload.php";
 
 if (file_exists("$projectPath/bootstrap.php"))
 {

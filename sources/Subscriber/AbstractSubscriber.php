@@ -37,9 +37,9 @@ abstract class AbstractSubscriber implements EventSubscriberInterface
 	static function getSubscribedEvents()
 	{
 		return [
-			MigrationManager::EVENT_ASK_MIGRATION_LIST     => '__invoke',
-			MigrationManager::EVENT_ASK_MIGRATION_APPEND   => '__invoke',
-			MigrationManager::EVENT_ASK_MIGRATION_ROLLBACK => '__invoke',
+			MigrationManager::EVENT_ASK_MIGRATION_LIST     => 'update',
+			MigrationManager::EVENT_ASK_MIGRATION_APPEND   => 'update',
+			MigrationManager::EVENT_ASK_MIGRATION_ROLLBACK => 'update',
 		];
 	}
 
@@ -54,7 +54,7 @@ abstract class AbstractSubscriber implements EventSubscriberInterface
 	/**
 	 * @param Event $event
 	 */
-	final public function __invoke(Event $event)
+	final public function update(Event $event)
 	{
 		if ($event instanceof AbstractEvent)
 		{
