@@ -497,21 +497,33 @@ class MigrationManager implements SplSubject
 	protected function _findModulesAndMigrationFiles()
 	{
 		$list = [];
+		$modules = [];
 
 		$finder = Finder::create()
-			->files()->name('*.ini')
+			->files()->name('*.ini')->name(self::COMPOSER_FILE)
 			->in($this->getProjectPath())
 			->followLinks()
-			->ignoreDotFiles(true)->ignoreVCS(true);
+			->ignoreDotFiles(false)
+			->ignoreVCS(true);
 
 		foreach ($finder as $file)
 		{
-			if (false === strpos(file_get_contents($file), '['.self::INI_SECTION_MIGRATION.']'))
+			if (basename($file) == self::COMPOSER_FILE)
 			{
-				continue;
+				if ($composer = json_decode(file_get_contents($file), true))
+				{
+					$modules[$composer['name']] = [];
+				}
 			}
+			else
+			{
+				if (false === strpos(file_get_contents($file), '['.self::INI_SECTION_MIGRATION.']'))
+				{
+					continue;
+				}
 
-			$list[dirname($file)][] = basename($file);
+				$list[dirname($file)][] = basename($file);
+			}
 		}
 
 		foreach (array_keys($list) as $path)
@@ -525,30 +537,28 @@ class MigrationManager implements SplSubject
 
 			if ($composer = json_decode(file_get_contents($modulePath.DIRECTORY_SEPARATOR.self::COMPOSER_FILE), true))
 			{
-				$moduleName = $composer['name'];
-
 				foreach ($list[$path] as $migration)
 				{
-					$list[$moduleName][basename($migration, '.ini')] = $path.DIRECTORY_SEPARATOR.$migration;
+					$list[$composer['name']][basename($migration, '.ini')] = $path.DIRECTORY_SEPARATOR.$migration;
 				}
 			}
 
 			unset($list[$path]);
 		}
 
-		return $list;
+		return array_merge($modules, $list);
 	}
 
 	/**
-	 * @param array $modulesAndFiles
+	 * @param array $modules
 	 * @return array
 	 */
-	protected function _parseMigrationFiles(array $modulesAndFiles)
+	protected function _parseMigrationFiles(array $modules)
 	{
 		$migrations = [];
 		$files = [];
 
-		foreach ($modulesAndFiles as $module => $iniFiles)
+		foreach ($modules as $module => $iniFiles)
 		{
 			foreach ($iniFiles as $path)
 			{
@@ -579,50 +589,72 @@ class MigrationManager implements SplSubject
 				continue;
 			}
 
-			if (isset($data[self::INI_SECTION_FILTERS]))
+			if (!empty($data[self::INI_SECTION_FILTERS]))
 			{
-				foreach ($data[self::INI_SECTION_FILTERS] as $filter => $condition)
+				$doTest = function($filter, $flag, $value, $name, $path) use (&$files, &$maximum, &$checked, $modules)
 				{
-					$flag = strncmp($condition, 'not ', 4) !== 0;
-					$flag || $condition = substr($condition, 4);
-
 					switch ($filter)
 					{
 						case self::INI_KEY_ENVIRONMENT:
-							$condition = '~^'.str_replace('%', '.*', preg_quote($condition, '~')).'$~i';
+							$value = '~^'.str_replace('%', '.*', preg_quote($value, '~')).'$~i';
 
-							if ($flag == (preg_match($condition, $this->getEnvironment()) < 1))
+							if ($flag == (preg_match($value, $this->getEnvironment()) < 1))
 							{
 								$maximum++;
-								continue 3;
+								return false;
 							}
 
 							break;
 
 						case self::INI_KEY_MIGRATION:
-							if (!strpos($condition, ':'))
+							if (!strpos($value, ':'))
 							{
-								$condition = substr($name, 0, strpos($name, ':') + 1).$condition;
+								$value = substr($name, 0, strpos($name, ':') + 1).$value;
 							}
 
-							if (isset($files[$condition]))
+							if (isset($files[$value]))
 							{
 								$files[$name] = $path;
-								continue 3;
+								return false;
 							}
 
-							if ($flag == empty($checked[$condition]))
+							if ($flag == empty($checked[$value]))
 							{
-								continue 3;
+								return false;
 							}
 
 							break;
 
 						case self::INI_KEY_MODULE:
-							if ($flag != isset($modulesAndFiles[$condition]))
+							$result = false;
+
+							if (false !== strpos($value, '%'))
+							{
+								$value = '~^'.str_replace('%', '.*', preg_quote($value, '~')).'$~i';
+
+								foreach (array_keys($modules) as $module)
+								{
+									$result |= preg_match($value, $module);
+								}
+							}
+							else
+							{
+								$result = isset($modules[$value]);
+							}
+
+							if ($flag != $result)
 							{
 								$maximum++;
-								continue 3;
+								return false;
+							}
+
+							break;
+
+						case self::INI_KEY_SERVICE:
+							if ($flag != isset($this->_container[$value]))
+							{
+								$maximum++;
+								return false;
 							}
 
 							break;
@@ -630,7 +662,42 @@ class MigrationManager implements SplSubject
 						default:
 							$this->_printError(sprintf(self::ERROR_UNKNOWN_FILTER, $name, $filter));
 							$this->_statMigrationsTotal--;
-							continue 3;
+							return false;
+					}
+
+					return true;
+				};
+
+				foreach ($data[self::INI_SECTION_FILTERS] as $filter => $condition)
+				{
+					$orFlag = false;
+
+					foreach (array_map('trim', explode(' or ', $condition)) as $orCondition)
+					{
+						$andFlag = true;
+
+						foreach (array_map('trim', explode(' and ', $orCondition)) as $condition)
+						{
+							$flag = strncmp($condition, 'not ', 4) !== 0;
+							$flag || $condition = trim(substr($condition, 4));
+
+							if (!$doTest($filter, $flag, $condition, $name, $path))
+							{
+								$andFlag = false;
+								break;
+							}
+						}
+
+						if ($andFlag)
+						{
+							$orFlag = true;
+							break;
+						}
+					}
+
+					if (empty($orFlag))
+					{
+						continue 2;
 					}
 				}
 			}

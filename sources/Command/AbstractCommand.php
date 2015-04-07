@@ -60,6 +60,8 @@ abstract class AbstractCommand extends Command implements SplObserver
 		$this->_input = $input;
 		$this->_output = $output;
 		$this->_lastState = 0;
+
+		$output->writeln($this->getApplication()->getName().' '.$this->getApplication()->getVersion());
 	}
 
 	/**
