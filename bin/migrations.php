@@ -5,7 +5,7 @@
 namespace Moro\Migration;
 use \Symfony\Component\Console\Application;
 use \Symfony\Component\EventDispatcher\EventDispatcher;
-use \Moro\Migration\Subscriber\ResourceSubscriber;
+use \Moro\Migration\Handler\FilesStorageHandler;
 use \Moro\Migration\Command\AbstractCommand;
 use \Moro\Migration\Command\MigrationsMigrate;
 use \Moro\Migration\Command\MigrationsStatus;
@@ -46,7 +46,7 @@ if (file_exists("$projectPath/bootstrap.php"))
 
 if (empty($console))
 {
-	$subscriber = new ResourceSubscriber();
+	$subscriber = new FilesStorageHandler();
 	$subscriber->setStoragePath($projectPath.DIRECTORY_SEPARATOR.'storage');
 
 	$container = new ArrayObject();

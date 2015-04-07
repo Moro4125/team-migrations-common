@@ -1,6 +1,6 @@
 <?php
 /** @var $container  \ArrayAccess */
-/** @var $service  \Moro\Migration\Subscriber\ResourceSubscriber */
+/** @var $service  \Moro\Migration\Handler\FilesStorageHandler */
 /** @var $arguments *///* Arguments for this script (as GET query).
 $projectPath = realpath($service->getProjectPath());
 

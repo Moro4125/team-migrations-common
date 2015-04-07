@@ -1,8 +1,8 @@
 <?php
 /**
- * Class AbstractSubscriber
+ * Class AbstractHandler
  */
-namespace Moro\Migration\Subscriber;
+namespace Moro\Migration\Handler;
 use \Symfony\Component\Console\Output\OutputInterface;
 use \Symfony\Component\EventDispatcher\Event;
 use \Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -16,10 +16,10 @@ use \Moro\Migration\Event\OnFreeService;
 use \RuntimeException;
 
 /**
- * Class AbstractSubscriber
- * @package Moro\Migration\Subscriber
+ * Class AbstractHandler
+ * @package Moro\Migration\Handler
  */
-abstract class AbstractSubscriber implements EventSubscriberInterface
+abstract class AbstractHandler implements EventSubscriberInterface
 {
 	/**
 	 * @var string  The name of service for save migration information.

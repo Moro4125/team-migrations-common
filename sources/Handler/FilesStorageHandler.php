@@ -1,8 +1,8 @@
 <?php
 /**
- * Class ResourceSubscriber
+ * Class FilesStorageHandler
  */
-namespace Moro\Migration\Subscriber;
+namespace Moro\Migration\Handler;
 use \Moro\Migration\MigrationManager;
 use \Moro\Migration\Event\OnAskMigrationList;
 use \Moro\Migration\Event\OnAskMigrationApply;
@@ -12,11 +12,11 @@ use \Exception;
 
 /**
  * Class AbstractSubscriber
- * @package Moro\Migration\Subscriber
+ * @package Moro\Migration\Handler
  *
  * Please, do not remember init property $storagePath and create storage folder.
  */
-class ResourceSubscriber extends AbstractSubscriber
+class FilesStorageHandler extends AbstractHandler
 {
 	const MIGRATION_FOLDER   = '.migrations';
 	const DATE_TIME_FORMAT   = 'Y-m-d H:i:s';
@@ -38,7 +38,7 @@ class ResourceSubscriber extends AbstractSubscriber
 	/**
 	 * @var string  The name of service for save migration information.
 	 */
-	protected $_serviceName = 'team.migrations.resources';
+	protected $_serviceName = 'team.migrations.files-storage';
 
 	/**
 	 * @var string  The root path of current project.
