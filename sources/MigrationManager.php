@@ -23,7 +23,7 @@ use \Exception;
  */
 class MigrationManager implements SplSubject
 {
-	const VERSION = '0.2.1';
+	const VERSION = '1.0.0';
 
 	const EVENT_INIT_SERVICE           = 'team.migrations.init_service';
 	const EVENT_ASK_MIGRATION_LIST     = 'team.migrations.ask_migration_list';
