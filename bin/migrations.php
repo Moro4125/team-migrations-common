@@ -4,13 +4,9 @@
  */
 namespace Moro\Migration;
 use \Symfony\Component\Console\Application;
-use \Symfony\Component\EventDispatcher\EventDispatcher;
-use \Moro\Migration\Handler\FilesStorageHandler;
 use \Moro\Migration\Command\AbstractCommand;
-use \Moro\Migration\Command\MigrationsMigrate;
-use \Moro\Migration\Command\MigrationsStatus;
-use \ArrayObject;
 
+global $argv;
 define('CLI_NAMESPACE_MIGRATIONS', true);
 
 for ($projectPath = $currentPath = dirname(__DIR__); strlen($currentPath) > 3; $currentPath = dirname($currentPath))
@@ -20,19 +16,19 @@ for ($projectPath = $currentPath = dirname(__DIR__); strlen($currentPath) > 3; $
 
 /** @noinspection PhpIncludeInspection */
 require_once "$projectPath/vendor/autoload.php";
+$bootstrap = file_exists("$projectPath/bootstrap.php")
+	? "$projectPath/bootstrap.php"
+	: dirname(__DIR__).'/bootstrap.php';
 
-if (file_exists("$projectPath/bootstrap.php"))
+/** @noinspection PhpIncludeInspection */
+$console = require $bootstrap;
+
+if ($console instanceof Application)
 {
-	/** @noinspection PhpIncludeInspection */
-	$console = require "$projectPath/bootstrap.php";
-
-	if ($console instanceof Application)
+	if (empty($argv[1]) || $argv[1] == 'list')
 	{
-		$helperSet = $console->getHelperSet();
 		$commands = $console->all();
-
-		$console = new Application('Team Migrations', MigrationManager::VERSION);
-		$console->setHelperSet($helperSet);
+		$console = new Application();
 
 		foreach ($commands as $command)
 		{
@@ -42,26 +38,12 @@ if (file_exists("$projectPath/bootstrap.php"))
 			}
 		}
 	}
-}
 
-if (empty($console))
+	$console->setName('Team Migrations');
+	$console->setVersion(MigrationManager::VERSION);
+	$console->run();
+}
+else
 {
-	$subscriber = new FilesStorageHandler();
-	$subscriber->setStoragePath($projectPath.DIRECTORY_SEPARATOR.'storage');
-
-	$container = new ArrayObject();
-	$container->offsetSet($subscriber->getServiceName(), $subscriber);
-
-	$eventDispatcher = new EventDispatcher();
-	$eventDispatcher->addSubscriber($subscriber);
-
-	$migrationManager = new MigrationManager();
-	$migrationManager->setContainer($container);
-	$migrationManager->setEventDispatcher($eventDispatcher);
-
-	$console = new Application('Team Migrations', MigrationManager::VERSION);
-	$console->add(new MigrationsMigrate($migrationManager));
-	$console->add(new MigrationsStatus($migrationManager));
+	echo "\nFile \"bootstrap.php\" must return instance of class \"Symfony\\Component\\Console\".\n";
 }
-
-$console->run();

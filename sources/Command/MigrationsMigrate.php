@@ -5,8 +5,6 @@
 namespace Moro\Migration\Command;
 use \Symfony\Component\Console\Input\InputInterface;
 use \Symfony\Component\Console\Output\OutputInterface;
-use \Symfony\Component\Console\Formatter\OutputFormatter;
-use \Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use \Moro\Migration\MigrationManager;
 use \SplSubject;
 
@@ -33,10 +31,6 @@ class MigrationsMigrate extends AbstractCommand
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
-		$formatter = new OutputFormatter(true);
-		$formatter->setStyle('error', new OutputFormatterStyle('red'));
-		$output->setFormatter($formatter);
-
 		$this->_manager->doMigrate($output);
 
 		return (int)$this->_hasErrors;

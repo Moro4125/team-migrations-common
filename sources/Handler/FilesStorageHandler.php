@@ -84,6 +84,12 @@ class FilesStorageHandler extends AbstractHandler
 	public function setStoragePath($path)
 	{
 		assert(is_string($path));
+
+		if (strlen($path) > 2 && $path[0] != '/' && $path[1] != ':')
+		{
+			$path = $this->getProjectPath().DIRECTORY_SEPARATOR.$path;
+		}
+
 		$this->_storagePath = $path;
 		return $this;
 	}

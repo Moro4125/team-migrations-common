@@ -574,6 +574,7 @@ class MigrationManager implements SplSubject
 			$data = parse_ini_file($path, true);
 
 			array_shift($files);
+			$size = count($files);
 
 			if (!$time = strtotime(@$data[self::INI_SECTION_MIGRATION][self::INI_KEY_CREATED]))
 			{
@@ -661,7 +662,6 @@ class MigrationManager implements SplSubject
 
 						default:
 							$this->_printError(sprintf(self::ERROR_UNKNOWN_FILTER, $name, $filter));
-							$this->_statMigrationsTotal--;
 							return false;
 					}
 
@@ -697,6 +697,7 @@ class MigrationManager implements SplSubject
 
 					if (empty($orFlag))
 					{
+						$size == count($files) && $this->_statMigrationsTotal--;
 						continue 2;
 					}
 				}
