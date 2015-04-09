@@ -28,7 +28,7 @@ abstract class AbstractSqlHandler extends AbstractHandler
 	/**
 	 * @var string
 	 */
-	protected $_migrationsTableName = 'team_migrations';
+	protected $_migrationsTableName = 'z_team_migrations';
 
 	/**
 	 * @var array
