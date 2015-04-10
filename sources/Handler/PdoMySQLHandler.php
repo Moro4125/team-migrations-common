@@ -141,7 +141,7 @@ class PdoMySQLHandler extends AbstractSqlHandler
 	protected function _selectFromTableByPK($table, $primaryKey, $value)
 	{
 		$statement = $this->getConnection()->prepare("SELECT * FROM `$table` WHERE `$primaryKey` = ?;");
-		return $statement->execute([$value]) ? $statement->fetchAll(PDO::FETCH_ASSOC) : null;
+		return $statement->execute([$value]) ? $statement->fetch(PDO::FETCH_ASSOC) : null;
 	}
 
 	/**

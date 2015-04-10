@@ -9,8 +9,10 @@ use \Symfony\Component\EventDispatcher\EventDispatcher;
 use \Symfony\Component\Console\Helper\QuestionHelper;
 use \Symfony\Component\Console\Question\Question;
 use \Symfony\Component\Console\Question\ChoiceQuestion;
+use \Doctrine\DBAL\DriverManager;
 use \Moro\Migration\Handler\FilesStorageHandler;
 use \Moro\Migration\Handler\PdoMySQLHandler;
+use \Moro\Migration\Handler\DoctrineDBALHandler;
 use \PDO;
 use \ArrayAccess;
 use \ReflectionClass;
@@ -67,7 +69,7 @@ trait InteractiveCommand
 		$reflection = new ReflectionClass(get_class($this));
 
 		$output->writeln('');
-		$choices = ['exit'];
+		$choices = [];
 
 		foreach ($reflection->getMethods() as $method)
 		{
@@ -76,6 +78,9 @@ trait InteractiveCommand
 				$choices[] = substr($method->getName(), 12);
 			}
 		}
+
+		sort($choices);
+		$choices = array_merge(['exit'], $choices);
 
 		unset($choices[0]);
 		$choices[0] = 'exit';
@@ -130,21 +135,7 @@ trait InteractiveCommand
 	public function setupHandlerPdoMySQL(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
 	{
 		$handler = new PdoMySQLHandler();
-
-		$question = new Question('Enter database host [127.0.0.1]: ', '127.0.0.1');
-		$dbHost = $dialog->ask($input, $output, $question);
-
-		$question = new Question('Enter database port [3306]: ', '3306');
-		$dbPort = $dialog->ask($input, $output, $question);
-
-		$question = new Question('Enter database name [test]: ', 'test');
-		$dbName = $dialog->ask($input, $output, $question);
-
-		$question = new Question('Enter database user [root]: ', 'root');
-		$dbUser = $dialog->ask($input, $output, $question);
-
-		$question = new Question('Enter database password []: ', '');
-		$dbPass = $dialog->ask($input, $output, $question);
+		list($dbHost, $dbPort, $dbName, $dbUser, $dbPass) = $this->_askDbConnectionOptions($input, $output, $dialog);
 
 		try
 		{
@@ -161,5 +152,75 @@ trait InteractiveCommand
 		}
 
 		return $handler;
+	}
+
+	/**
+	 * @param InputInterface $input
+	 * @param OutputInterface $output
+	 * @param QuestionHelper $dialog
+	 * @return \Moro\Migration\Handler\DoctrineDBALHandler
+	 */
+	public function setupHandlerDoctrineDBAL(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
+	{
+		$handler = new DoctrineDBALHandler();
+
+		$drivers = array_merge(['exit'], DriverManager::getAvailableDrivers());
+		unset($drivers[0]); $drivers[0] = 'exit';
+
+		$question = new ChoiceQuestion('Please, choice DB driver:', $drivers, 0);
+		$question->setMaxAttempts(3);
+
+		if ('exit' === $driver = $dialog->ask($input, $output, $question))
+		{
+			return null;
+		}
+
+		list($dbHost, $dbPort, $dbName, $dbUser, $dbPass) = $this->_askDbConnectionOptions($input, $output, $dialog);
+
+		try
+		{
+			$handler->setConnection(DriverManager::getConnection([
+				'driver'   => $driver,
+				'user'     => $dbUser,
+				'password' => $dbPass,
+				'host'     => $dbHost,
+				'port'     => $dbPort,
+				'dbname'   => $dbName,
+			]));
+		}
+		catch (Exception $exception)
+		{
+			$output->writeln('');
+			$output->writeln('<error>'.get_class($exception).': '.$exception->getMessage().'</error>');
+			return null;
+		}
+
+		return $handler;
+	}
+
+	/**
+	 * @param InputInterface $input
+	 * @param OutputInterface $output
+	 * @param QuestionHelper $dialog
+	 * @return array
+	 */
+	protected function _askDbConnectionOptions(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
+	{
+		$question = new Question('Enter database host [127.0.0.1]: ', '127.0.0.1');
+		$dbHost = $dialog->ask($input, $output, $question);
+
+		$question = new Question('Enter database port [3306]: ', '3306');
+		$dbPort = $dialog->ask($input, $output, $question);
+
+		$question = new Question('Enter database name [test]: ', 'test');
+		$dbName = $dialog->ask($input, $output, $question);
+
+		$question = new Question('Enter database user [root]: ', 'root');
+		$dbUser = $dialog->ask($input, $output, $question);
+
+		$question = new Question('Enter database password []: ', '');
+		$dbPass = $dialog->ask($input, $output, $question);
+
+		return [$dbHost, $dbPort, $dbName, $dbUser, $dbPass];
 	}
 }

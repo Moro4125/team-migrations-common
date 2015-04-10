@@ -16,6 +16,7 @@ use \SplObjectStorage;
 use \SplObserver;
 use \SplSubject;
 use \Exception;
+use \ErrorException;
 
 /**
  * Class MigrationManager
@@ -55,6 +56,7 @@ class MigrationManager implements SplSubject
 	const ERROR_RECURSION          = 'File "%1$s.ini" has recursion in filter conditions.';
 	const ERROR_EVENT_NOT_RECEIVE  = 'Service "team.migrations.%1$s" does not receive event "%2$s"';
 	const ERROR_WRONG_EVENT_RESULT = 'Wrong result of event %1$s: %2$s';
+	const ERROR_WRONG_PHP_SYNTAX   = 'The PHP script of migration "%1$s" has wrong syntax.';
 
 	const STATE_INITIALIZED        = 0;
 	const STATE_FIRED              = 1;
@@ -406,8 +408,24 @@ class MigrationManager implements SplSubject
 		$call = self::$_call;
 
 		$callPhpScript = function($event, $hash, $key, $script, $arguments) use ($call) {
+			if (!$this->_evalCheckSyntax($script))
+			{
+				/** @noinspection PhpUndefinedMethodInspection */
+				$message = sprintf(self::ERROR_WRONG_PHP_SYNTAX, $event->getMigrationName());
+				/** @noinspection PhpUndefinedMethodInspection */
+				$event->setException(new ErrorException($message, 0, E_PARSE, 'action N'.$event->getStep(), 0));
+				return -1;
+			}
+
+			$errorReporting = error_reporting();
+
 			try
 			{
+				error_reporting(E_ALL | E_STRICT | E_NOTICE);
+				set_error_handler(function($severity, $message, $file = null, $line = null) {
+					throw new ErrorException($message, 0, $severity, $file, $line);
+				}, E_ALL | E_STRICT | E_NOTICE);
+
 				/** @var \Moro\Migration\Event\OnAskMigrationApply $event */
 				$service = $this->_container->offsetGet($event->getServiceName());
 				return $call($this->_container, $service, $arguments, trim($script), $hash, $this->_validationKey.$key);
@@ -418,6 +436,13 @@ class MigrationManager implements SplSubject
 				$event->setException($exception);
 				return -1;
 			}
+			finally
+			{
+				restore_error_handler();
+				error_reporting($errorReporting);
+			}
+
+			return null;
 		};
 
 		$this->_dispatcher->dispatch(self::EVENT_INIT_SERVICE, OnInitService::create()->setOutput($output));
@@ -1076,13 +1101,92 @@ class MigrationManager implements SplSubject
 	}
 
 	/**
+	 * @param string $code
+	 * @return bool
+	 */
+	protected function _evalCheckSyntax($code)
+	{
+		$braces = 0;
+		$inString = 0;
+
+		// We need to know if braces are correctly balanced.
+		// This is not trivial due to variable interpolation
+		// which occurs in heredoc, backticked and double quoted strings
+		foreach (token_get_all($code) as $token)
+		{
+			if (is_array($token))
+			{
+				switch ($token[0])
+				{
+					case T_CURLY_OPEN:
+					case T_DOLLAR_OPEN_CURLY_BRACES:
+					case T_START_HEREDOC:
+						++$inString;
+						break;
+
+					case T_END_HEREDOC:
+						--$inString;
+						break;
+				}
+			}
+			else if ($inString & 1)
+			{
+				switch ($token)
+				{
+					case '`':
+					case '"':
+						--$inString;
+						break;
+				}
+			}
+			else
+			{
+				switch ($token)
+				{
+					case '`':
+					case '"':
+						++$inString;
+						break;
+
+					case '{':
+						++$braces;
+						break;
+
+					case '}':
+						if ($inString)
+						{
+							--$inString;
+						}
+						elseif (--$braces < 0)
+						{
+							return false;
+						}
+
+						break;
+				}
+			}
+		}
+
+		// Unbalanced braces would break the eval below
+		if ($braces ?( $code = false ): true)
+		{
+			ob_start(); // Catch potential parse error messages
+			$code = eval('if(0){?'.'>' . $code . '}'); // Put $code in a dead code sandbox to prevent its execution
+			ob_end_clean();
+		}
+
+		return false !== $code;
+	}
+
+	/**
 	 * @param \Exception|string $error
 	 */
 	protected function _printError($error)
 	{
 		if ($error instanceof Exception)
 		{
-			$error = 'Error: "'.$error->getMessage().'" in '.$error->getFile().' ('.$error->getLine().")";
+			$line = $error->getLine();
+			$error = 'Error: "'.$error->getMessage().'" in '.$error->getFile().($line ? ' ('.$line.').' : '.');
 		}
 
 		$state = $this->_state;
