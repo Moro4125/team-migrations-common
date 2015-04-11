@@ -408,20 +408,18 @@ class MigrationManager implements SplSubject
 		$call = self::$_call;
 
 		$callPhpScript = function($event, $hash, $key, $script, $arguments) use ($call) {
-			if (!$this->_evalCheckSyntax($script))
-			{
-				/** @noinspection PhpUndefinedMethodInspection */
-				$message = sprintf(self::ERROR_WRONG_PHP_SYNTAX, $event->getMigrationName());
-				/** @noinspection PhpUndefinedMethodInspection */
-				$event->setException(new ErrorException($message, 0, E_PARSE, 'action N'.$event->getStep(), 0));
-				return -1;
-			}
-
-			$errorReporting = error_reporting();
-
 			try
 			{
-				error_reporting(E_ALL | E_STRICT | E_NOTICE);
+				$errorReporting = error_reporting(E_ALL | E_STRICT | E_NOTICE);
+
+				if (!$this->_evalCheckSyntax($script))
+				{
+					/** @noinspection PhpUndefinedMethodInspection */
+					$message = sprintf(self::ERROR_WRONG_PHP_SYNTAX, $event->getMigrationName());
+					/** @noinspection PhpUndefinedMethodInspection */
+					throw new ErrorException($message, 0, E_PARSE, 'action N'.$event->getStep(), 0);
+				}
+
 				set_error_handler(function($severity, $message, $file = null, $line = null) {
 					throw new ErrorException($message, 0, $severity, $file, $line);
 				}, E_ALL | E_STRICT | E_NOTICE);
@@ -438,8 +436,9 @@ class MigrationManager implements SplSubject
 			}
 			finally
 			{
-				restore_error_handler();
+				/** @noinspection PhpUndefinedVariableInspection */
 				error_reporting($errorReporting);
+				restore_error_handler();
 			}
 
 			return null;
@@ -468,10 +467,6 @@ class MigrationManager implements SplSubject
 			}
 
 			$this->notify(self::STATE_COMPLETE);
-		}
-		catch (BreakException $exception)
-		{
-			$this->notify(self::STATE_BREAK);
 		}
 		catch (Exception $exception)
 		{
@@ -734,19 +729,29 @@ class MigrationManager implements SplSubject
 			{
 				$target && $action = $target.':'.$action;
 
-				if (strncmp($index, 'a', 1) === 0 || strncmp($index, 'r', 1) === 0)
+				if (!$service = substr($action, 0, (int)strpos($action, ':')))
 				{
-					$service = substr($action, 0, strpos($action, ':'));
+					continue;
+				}
 
-					if (empty($migrations[$service][$name]))
-					{
-						$migrations[$service][$name] = $time;
-					}
+				if (!preg_match('~^(?P<mode>[ar])(?P<step>\\d+)$~', $index, $match))
+				{
+					continue;
+				}
 
-					if (strncmp($index, 'a', 1) === 0)
-					{
-						$migrations[$service][$name] .= '|' . ((int)substr($index, 1));
-					}
+				if (empty($migrations[$service]))
+				{
+					$migrations[$service] = [];
+				}
+
+				if (empty($migrations[$service][$name]))
+				{
+					$migrations[$service][$name] = (string)$time;
+				}
+
+				if ($match['mode'] == 'a')
+				{
+					$migrations[$service][$name] .= '|' . ((int)$match['step']);
 				}
 			}
 
@@ -816,7 +821,8 @@ class MigrationManager implements SplSubject
 							$target[$migrationName]['time'] = (int)$value;
 							$target[$migrationName]['list'] = [];
 						}
-						elseif ($index)
+
+						if ($index)
 						{
 							$target[$migrationName]['list'][(int)$value] = $service;
 						}
@@ -1064,6 +1070,16 @@ class MigrationManager implements SplSubject
 
 			foreach (array_unique($meta['list']) as $service)
 			{
+				$rollbackScripts = isset($migrationBack[$service]) ? $migrationBack[$service] : [];
+
+				foreach ($rollbackScripts as &$record)
+				{
+					if (empty($record[self::ROLLBACK_KEY_SIGN]))
+					{
+						$record[self::ROLLBACK_KEY_SIGN] = sha1($this->_validationKey.implode('', $record));
+					}
+				}
+
 				$event = OnAskMigrationApply::create()
 					->setServiceName($service)
 					->setMigrationName($migrationName)
@@ -1073,7 +1089,7 @@ class MigrationManager implements SplSubject
 					->setHash(sha1($this->_validationKey.trim($migrationFile[0])))
 					->setScript($migrationFile[0])
 					->setValidationKey((string)$this->_validationKey)
-					->setRollback(isset($migrationBack[$service]) ? $migrationBack[$service] : []);
+					->setRollback($rollbackScripts);
 
 				$this->_dispatcher->dispatch(self::EVENT_ASK_MIGRATION_APPEND, $event);
 
