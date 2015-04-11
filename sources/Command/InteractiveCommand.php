@@ -12,6 +12,8 @@ use \Symfony\Component\Console\Question\ChoiceQuestion;
 use \Doctrine\DBAL\DriverManager;
 use \Moro\Migration\Handler\FilesStorageHandler;
 use \Moro\Migration\Handler\PdoMySQLHandler;
+use \Moro\Migration\Handler\PdoPostgreSQLHandler;
+use \Moro\Migration\Handler\PdoSQLiteHandler;
 use \Moro\Migration\Handler\DoctrineDBALHandler;
 use \PDO;
 use \ArrayAccess;
@@ -33,6 +35,16 @@ trait InteractiveCommand
 	 * @var EventDispatcher
 	 */
 	protected $_eventDispatcher;
+
+	/**
+	 * @var string
+	 */
+	protected $_defaultHost = '127.0.0.1';
+
+	/**
+	 * @var string
+	 */
+	protected $_defaultPort = '3306';
 
 	/**
 	 * @param EventDispatcher $eventDispatcher
@@ -158,35 +170,20 @@ trait InteractiveCommand
 	 * @param InputInterface $input
 	 * @param OutputInterface $output
 	 * @param QuestionHelper $dialog
-	 * @return \Moro\Migration\Handler\DoctrineDBALHandler
+	 * @return \Moro\Migration\Handler\FilesStorageHandler
 	 */
-	public function setupHandlerDoctrineDBAL(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
+	public function setupHandlerPdoPostgreSQL(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
 	{
-		$handler = new DoctrineDBALHandler();
-
-		$drivers = array_merge(['exit'], DriverManager::getAvailableDrivers());
-		unset($drivers[0]); $drivers[0] = 'exit';
-
-		$question = new ChoiceQuestion('Please, choice DB driver:', $drivers, 0);
-		$question->setMaxAttempts(3);
-
-		if ('exit' === $driver = $dialog->ask($input, $output, $question))
-		{
-			return null;
-		}
-
+		$handler = new PdoPostgreSQLHandler();
+		$this->_defaultPort = '5432';
 		list($dbHost, $dbPort, $dbName, $dbUser, $dbPass) = $this->_askDbConnectionOptions($input, $output, $dialog);
 
 		try
 		{
-			$handler->setConnection(DriverManager::getConnection([
-				'driver'   => $driver,
-				'user'     => $dbUser,
-				'password' => $dbPass,
-				'host'     => $dbHost,
-				'port'     => $dbPort,
-				'dbname'   => $dbName,
-			]));
+			$pdo = new PDO("pgsql:host=$dbHost;port=$dbPort;dbname=$dbName", $dbUser, $dbPass ?: null, [
+				PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+			]);
+			$handler->setConnection($pdo);
 		}
 		catch (Exception $exception)
 		{
@@ -202,14 +199,132 @@ trait InteractiveCommand
 	 * @param InputInterface $input
 	 * @param OutputInterface $output
 	 * @param QuestionHelper $dialog
+	 * @return \Moro\Migration\Handler\FilesStorageHandler
+	 */
+	public function setupHandlerPdoSQLite(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
+	{
+		$handler = new PdoSQLiteHandler();
+
+		$question = new Question('Enter database path [storage/db.sqlite]: ', 'storage/db.sqlite');
+		$dbPath = $dialog->ask($input, $output, $question);
+
+		if (strlen($dbPath) > 1 && $dbPath[0] != '/' && $dbPath[1] != ':')
+		{
+			$dbPath = $this->_getProjectPath().DIRECTORY_SEPARATOR.$dbPath;
+		}
+
+		try
+		{
+			$pdo = new PDO("sqlite:$dbPath", null, null, [
+				PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+			]);
+			$handler->setConnection($pdo);
+		}
+		catch (Exception $exception)
+		{
+			$output->writeln('');
+			$output->writeln('<error>'.get_class($exception).': '.$exception->getMessage().'</error>');
+			return null;
+		}
+
+		return $handler;
+	}
+
+	/**
+	 * @param InputInterface $input
+	 * @param OutputInterface $output
+	 * @param QuestionHelper $dialog
+	 * @return \Moro\Migration\Handler\DoctrineDBALHandler
+	 */
+	public function setupHandlerDoctrineDBAL(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
+	{
+		$handler = new DoctrineDBALHandler();
+
+		$drivers = array_merge(['exit'], DriverManager::getAvailableDrivers());
+		unset($drivers[0]); $drivers[0] = 'exit';
+
+		$question = new ChoiceQuestion('Please, choice DB driver:', $drivers, 0);
+		$question->setMaxAttempts(3);
+
+		try
+		{
+			switch ($driver = $dialog->ask($input, $output, $question))
+			{
+				case 'exit':
+					return null;
+
+				case 'pdo_sqlite':
+					$question = new Question('Enter database path [storage/db.sqlite]: ', 'storage/db.sqlite');
+					$dbPath = $dialog->ask($input, $output, $question);
+
+					if (strlen($dbPath) > 1 && $dbPath[0] != '/' && $dbPath[1] != ':')
+					{
+						$dbPath = $this->_getProjectPath().DIRECTORY_SEPARATOR.$dbPath;
+					}
+
+					$handler->setConnection(DriverManager::getConnection(['driver' => $driver, 'path' => $dbPath]));
+					break;
+
+				/** @noinspection PhpMissingBreakStatementInspection */
+				case 'pdo_pgsql':
+					$this->_defaultPort = '5432';
+
+				default:
+					$options = $this->_askDbConnectionOptions($input, $output, $dialog);
+
+					$handler->setConnection(DriverManager::getConnection([
+						'driver'   => $driver,
+						'host'     => $options[0],
+						'port'     => $options[1],
+						'dbname'   => $options[2],
+						'user'     => $options[3],
+						'password' => $options[4],
+					]));
+			}
+		}
+		catch (Exception $exception)
+		{
+			$output->writeln('');
+			$output->writeln('<error>'.get_class($exception).': '.$exception->getMessage().'</error>');
+			return null;
+		}
+
+		return $handler;
+	}
+
+	protected $_projectPath;
+
+	/**
+	 * @return string
+	 */
+	protected function _getProjectPath()
+	{
+		if (empty($this->_projectPath))
+		{
+			for ($this->_projectPath = $cursor = dirname(__DIR__); strlen($cursor) > 3; $cursor = dirname($cursor))
+			{
+				if (file_exists($cursor.DIRECTORY_SEPARATOR.'composer.json'))
+				{
+					$this->_projectPath = $cursor;
+				}
+			}
+		}
+
+		return $this->_projectPath;
+	}
+
+	/**
+	 * @param InputInterface $input
+	 * @param OutputInterface $output
+	 * @param QuestionHelper $dialog
 	 * @return array
 	 */
 	protected function _askDbConnectionOptions(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
 	{
-		$question = new Question('Enter database host [127.0.0.1]: ', '127.0.0.1');
+		$question = new Question('Enter database host ['.$this->_defaultHost.']: ', $this->_defaultHost);
 		$dbHost = $dialog->ask($input, $output, $question);
 
-		$question = new Question('Enter database port [3306]: ', '3306');
+		$question = new Question('Enter database port ['.$this->_defaultPort.']: ', $this->_defaultPort);
 		$dbPort = $dialog->ask($input, $output, $question);
 
 		$question = new Question('Enter database name [test]: ', 'test');

@@ -168,8 +168,11 @@ abstract class AbstractSqlHandler extends AbstractHandler
 
 					// Call PHP script with this object as argument "service".
 					case 'php':
-						$event->callPhpScript();
-						$this->_afterCallPhpScript($event->getResultsOfCall());
+						if ($this->_beforeCallPhpScript())
+						{
+							$event->callPhpScript();
+							$this->_afterCallPhpScript($event->getResultsOfCall());
+						}
 						break;
 
 					// If detected unknown migration type.
@@ -260,8 +263,11 @@ abstract class AbstractSqlHandler extends AbstractHandler
 
 					// Call PHP script with this object as argument "service".
 					case 'php':
-						$event->callPhpScript($rec[self::COL_SIGNATURE],$rec[self::COL_SCRIPT],$rec[self::COL_OPTIONS]);
-						$this->_afterCallPhpScript();
+						if ($this->_beforeCallPhpScript())
+						{
+							$event->callPhpScript($rec[self::COL_SIGNATURE], $rec[self::COL_SCRIPT], $rec[self::COL_OPTIONS]);
+							$this->_afterCallPhpScript();
+						}
 						break;
 
 					// If detected unknown migration type.
@@ -274,6 +280,14 @@ abstract class AbstractSqlHandler extends AbstractHandler
 		});
 
 		$result instanceof Exception && $event->setException($result);
+		return true;
+	}
+
+	/**
+	 * @return bool
+	 */
+	protected function _beforeCallPhpScript()
+	{
 		return true;
 	}
 
