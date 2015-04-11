@@ -16,7 +16,7 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 	/**
 	 * @var string  The name of service for save migration information.
 	 */
-	protected $_serviceName = 'team.migrations.doctrine-dbal';
+	protected $_serviceName = 'team-migrations.doctrine-dbal';
 
 	/**
 	 * @var Connection

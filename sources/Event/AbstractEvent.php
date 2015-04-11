@@ -24,7 +24,7 @@ abstract class AbstractEvent extends Event
 	{
 		assert($this->_serviceName === null && is_string($name));
 
-		$this->_serviceName = 'team.migrations.'.$name;
+		$this->_serviceName = 'team-migrations.'.$name;
 		return $this;
 	}
 

@@ -38,7 +38,7 @@ class FilesStorageHandler extends AbstractHandler
 	/**
 	 * @var string  The name of service for save migration information.
 	 */
-	protected $_serviceName = 'team.migrations.files-storage';
+	protected $_serviceName = 'team-migrations.files-storage';
 
 	/**
 	 * @var string  The root path of current project.

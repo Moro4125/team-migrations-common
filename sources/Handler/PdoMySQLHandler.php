@@ -15,7 +15,7 @@ class PdoMySQLHandler extends AbstractSqlHandler
 	/**
 	 * @var string  The name of service for save migration information.
 	 */
-	protected $_serviceName = 'team.migrations.pdo-mysql';
+	protected $_serviceName = 'team-migrations.pdo-mysql';
 
 	/**
 	 * @var PDO
