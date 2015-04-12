@@ -60,6 +60,8 @@ class MigrationManager implements SplSubject
 	const ERROR_WRONG_EVENT_RESULT = 'Wrong result of event %1$s: %2$s';
 	const ERROR_WRONG_PHP_SYNTAX   = 'The PHP script of migration "%1$s" has wrong syntax.';
 	const ERROR_WRONG_PROJECT_NAME = 'Project name was not find in file "%1$s".';
+	const ERROR_EMPTY_FILE_NAME    = 'Require not empty file name.';
+	const ERROR_EMPTY_SERVICE_NAME = 'Require not empty service name.';
 
 	const STATE_INITIALIZED        = 0;
 	const STATE_FIRED              = 1;
@@ -416,7 +418,15 @@ class MigrationManager implements SplSubject
 			$this->notify(self::STATE_FIND_MIGRATIONS);
 			list($name, $service) = $callbackAskNameAndService(array_keys($folders), array_keys($migrations));
 
-			if ($name && $service)
+			if (empty($name))
+			{
+				$this->_printError(self::ERROR_EMPTY_FILE_NAME);
+			}
+			elseif (empty($service))
+			{
+				$this->_printError(self::ERROR_EMPTY_SERVICE_NAME);
+			}
+			else
 			{
 				file_put_contents($migrationsPath.DIRECTORY_SEPARATOR.$name.'.ini', implode("\n", [
 					"; File $name.ini by ".(getenv('USERNAME') ?: getenv('USER') ?: 'unknown user'),

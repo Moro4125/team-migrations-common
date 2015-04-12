@@ -34,6 +34,11 @@ class MigrationsCreate extends AbstractCommand
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
+		if ($output->getVerbosity() == OutputInterface::VERBOSITY_QUIET)
+		{
+			$output->setVerbosity(OutputInterface::VERBOSITY_NORMAL);
+		}
+
 		$this->_manager->doCreate(function($files, $services) use ($input, $output) {
 			$this->_output->writeln('');
 
@@ -99,7 +104,16 @@ class MigrationsCreate extends AbstractCommand
 
 				case MigrationManager::STATE_COMPLETE:
 					$this->_output->writeln('');
-					$this->_output->writeln('Complete.');
+
+					if ($subject->getStatErrors())
+					{
+						$this->_output->writeln('<error>Errors: '.$subject->getStatErrors().'</error>');
+					}
+					else
+					{
+						$this->_output->writeln('Complete.');
+					}
+
 					break;
 			}
 
