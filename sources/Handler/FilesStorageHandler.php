@@ -151,6 +151,11 @@ class FilesStorageHandler extends AbstractHandler
 					{
 						$migrations[$record[self::KEY_NAME]] .= '|' . $record[self::KEY_STEP];
 					}
+
+					if (!empty($record[self::KEY_TYPE]) && $record[self::KEY_TYPE] == MigrationManager::PERMANENT)
+					{
+						$event->setPermanent((string)strtotime($record[self::KEY_CREATED]));
+					}
 				}
 			}
 		}
@@ -196,7 +201,7 @@ class FilesStorageHandler extends AbstractHandler
 					self::KEY_NAME      => $event->getMigrationName(),
 					self::KEY_STEP      => $step,
 					self::KEY_CREATED   => date(self::DATE_TIME_FORMAT, $event->getTime()),
-					self::KEY_APPLIED   => date(self::DATE_TIME_FORMAT, time()),
+					self::KEY_APPLIED   => date(self::DATE_TIME_FORMAT, self::_generateAppliedTime()),
 					self::KEY_TYPE      => $data[MigrationManager::ROLLBACK_KEY_TYPE],
 					self::KEY_SCRIPT    => $data[MigrationManager::ROLLBACK_KEY_CODE],
 					self::KEY_ARGUMENTS => $data[MigrationManager::ROLLBACK_KEY_ARGS],

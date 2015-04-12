@@ -40,6 +40,7 @@ class MigrationManager implements SplSubject
 
 	const INI_KEY_CREATED     = 'created';
 	const INI_KEY_SERVICE     = 'service';
+	const INI_KEY_PERMANENT   = 'permanent';
 	const INI_KEY_ENVIRONMENT = 'environment';
 	const INI_KEY_MIGRATION   = 'migration';
 	const INI_KEY_MODULE      = 'module';
@@ -52,6 +53,7 @@ class MigrationManager implements SplSubject
 	const ROLLBACK_KEY_SIGN = 'sign';
 
 	const ERROR_EMPTY_INI_SECTION  = 'File "%1$s.ini" does not have section "%2$s" or section is empty.';
+	const ERROR_EMPTY_INI_KEY      = 'File "%1$s.ini" does not have key "%2$s" in section "%3$s".';
 	const ERROR_UNKNOWN_FILTER     = 'File "%1$s.ini" has unknown filter "%2$s" in same section.';
 	const ERROR_RECURSION          = 'File "%1$s.ini" has recursion in filter conditions.';
 	const ERROR_EVENT_NOT_RECEIVE  = 'Service "team-migrations.%1$s" does not receive event "%2$s"';
@@ -68,6 +70,8 @@ class MigrationManager implements SplSubject
 	const STATE_ERROR              = 7;
 	const STATE_COMPLETE           = 8;
 	const STATE_BREAK              = 9;
+
+	const PERMANENT = 'permanent';
 
 	/**
 	 * @var int
@@ -108,6 +112,11 @@ class MigrationManager implements SplSubject
 	 * @var int
 	 */
 	protected $_statMigrationsTotal;
+
+	/**
+	 * @var int
+	 */
+	protected $_statMigrationsStored;
 
 	/**
 	 * @var int
@@ -265,6 +274,14 @@ class MigrationManager implements SplSubject
 	public function getStatMigrationsTotal()
 	{
 		return $this->_statMigrationsTotal;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getStatMigrationsStored()
+	{
+		return $this->_statMigrationsStored;
 	}
 
 	/**
@@ -596,9 +613,27 @@ class MigrationManager implements SplSubject
 			array_shift($files);
 			$size = count($files);
 
-			if (!$time = strtotime(@$data[self::INI_SECTION_MIGRATION][self::INI_KEY_CREATED]))
+			if (empty($data[self::INI_SECTION_MIGRATION]))
 			{
 				$this->_printError(sprintf(self::ERROR_EMPTY_INI_SECTION, $name, self::INI_SECTION_MIGRATION));
+				$this->_statMigrationsTotal--;
+				continue;
+			}
+
+			$mSection = $data[self::INI_SECTION_MIGRATION];
+
+			if (!$time = strtotime(@$data[self::INI_SECTION_MIGRATION][self::INI_KEY_CREATED]))
+			{
+				$error = sprintf(self::ERROR_EMPTY_INI_KEY, $name, self::INI_KEY_CREATED, self::INI_SECTION_MIGRATION);
+				$this->_printError($error);
+				$this->_statMigrationsTotal--;
+				continue;
+			}
+
+			if (!empty($mSection[self::INI_KEY_PERMANENT]) && empty($mSection[self::INI_KEY_SERVICE]))
+			{
+				$error = sprintf(self::ERROR_EMPTY_INI_KEY, $name, self::INI_KEY_SERVICE, self::INI_SECTION_MIGRATION);
+				$this->_printError($error);
 				$this->_statMigrationsTotal--;
 				continue;
 			}
@@ -608,6 +643,18 @@ class MigrationManager implements SplSubject
 				$this->_printError(sprintf(self::ERROR_EMPTY_INI_SECTION, $name, self::INI_SECTION_ACTIONS));
 				$this->_statMigrationsTotal--;
 				continue;
+			}
+
+			if (!empty($mSection[self::INI_KEY_PERMANENT]) && $service = $mSection[self::INI_KEY_SERVICE])
+			{
+				if (empty($migrations[$service][self::PERMANENT]))
+				{
+					$migrations[$service][self::PERMANENT] = $time;
+				}
+				else
+				{
+					$migrations[$service][self::PERMANENT] = max($migrations[$service][self::PERMANENT], $time);
+				}
 			}
 
 			if (!empty($data[self::INI_SECTION_FILTERS]))
@@ -723,7 +770,7 @@ class MigrationManager implements SplSubject
 				}
 			}
 
-			$target = @$data[self::INI_SECTION_MIGRATION][self::INI_KEY_SERVICE];
+			$target = empty($mSection[self::INI_KEY_SERVICE]) ? '' : $mSection[self::INI_KEY_SERVICE];
 
 			foreach ($data[self::INI_SECTION_ACTIONS] as $index => $action)
 			{
@@ -737,11 +784,6 @@ class MigrationManager implements SplSubject
 				if (!preg_match('~^(?P<mode>[ar])(?P<step>\\d+)$~', $index, $match))
 				{
 					continue;
-				}
-
-				if (empty($migrations[$service]))
-				{
-					$migrations[$service] = [];
 				}
 
 				if (empty($migrations[$service][$name]))
@@ -801,14 +843,25 @@ class MigrationManager implements SplSubject
 				}
 			}
 
-			$temp = [array_diff_key($result, $list), array_diff_key($list, $result), array_intersect_key($list, $result)];
+			$permanentLine = max($event->getPermanent(), empty($list[self::PERMANENT]) ? 0 : $list[self::PERMANENT]);
+			$t = [array_diff_key($result, $list), array_diff_key($list, $result), array_intersect_key($list, $result)];
 
-			foreach ($temp as $mode => $tempList)
+			foreach ($t as $mode => $tempList)
 			{
-				$target = &$actions[$mode];
-
 				foreach ($tempList as $migrationName => $meta)
 				{
+					$target = &$actions[$mode];
+
+					if ($migrationName == self::PERMANENT)
+					{
+						continue;
+					}
+
+					if ($mode == 0 && $permanentLine >= (int)$meta)
+					{
+						$target = &$actions[2];
+					}
+
 					if ($mode == 0)
 					{
 						$target[$migrationName]['name'][] = $service;
@@ -832,8 +885,6 @@ class MigrationManager implements SplSubject
 						}
 					}
 				}
-
-				unset($target);
 			}
 		}
 
@@ -864,9 +915,9 @@ class MigrationManager implements SplSubject
 			unset($target2);
 		}
 
-		unset($target);
+		$this->_statMigrationsStored     = count($actions[2]);
 		$this->_statMigrationForRollback = count($actions[0]);
-		$this->_statMigrationForCommit = count($actions[1]);
+		$this->_statMigrationForCommit   = count($actions[1]);
 
 		return $actions;
 	}
@@ -944,6 +995,8 @@ class MigrationManager implements SplSubject
 			$migrationBack = [];
 			$migrationPath = dirname($modules[$module][$file]);
 			$targetService = @$migrationData[self::INI_SECTION_MIGRATION][self::INI_KEY_SERVICE];
+
+			$isPermanent = !empty($migrationData[self::INI_SECTION_MIGRATION][self::INI_KEY_PERMANENT]);
 
 			foreach ($migrationData['actions'] as $index => $action)
 			{
@@ -1085,7 +1138,7 @@ class MigrationManager implements SplSubject
 					->setMigrationName($migrationName)
 					->setStep(0)
 					->setTime($migrationTime)
-					->setType('ini')
+					->setType($isPermanent ? self::PERMANENT : 'ini')
 					->setHash(sha1($this->_validationKey.trim($migrationFile[0])))
 					->setScript($migrationFile[0])
 					->setValidationKey((string)$this->_validationKey)

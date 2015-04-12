@@ -21,6 +21,8 @@ use \RuntimeException;
  */
 abstract class AbstractHandler implements EventSubscriberInterface
 {
+	protected static $_lastAppliedTime = 0;
+
 	/**
 	 * @var string  The name of service for save migration information.
 	 */
@@ -41,6 +43,15 @@ abstract class AbstractHandler implements EventSubscriberInterface
 			MigrationManager::EVENT_ASK_MIGRATION_APPEND   => 'update',
 			MigrationManager::EVENT_ASK_MIGRATION_ROLLBACK => 'update',
 		];
+	}
+
+	/**
+	 * @return int
+	 */
+	static protected function _generateAppliedTime()
+	{
+		self::$_lastAppliedTime = max(self::$_lastAppliedTime + 1, time());
+		return self::$_lastAppliedTime;
 	}
 
 	/**

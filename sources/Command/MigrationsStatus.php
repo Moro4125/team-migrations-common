@@ -84,10 +84,8 @@ class MigrationsStatus extends AbstractCommand
 				case MigrationManager::STATE_COMPLETE:
 					if (!$subject->getStatErrors())
 					{
-						$storedCount = $subject->getStatMigrationsTotal() - $subject->getStatMigrationForCommit();
-
 						$this->_output->writeln('');
-						$this->_output->writeln('Migrations was applied:  '.$storedCount);
+						$this->_output->writeln('Migrations was applied:  '.$subject->getStatMigrationsStored());
 						$this->_output->writeln('Migrations for rollback: '.$subject->getStatMigrationForRollback());
 						$this->_output->writeln('Migrations for perform:  '.$subject->getStatMigrationForCommit());
 					}

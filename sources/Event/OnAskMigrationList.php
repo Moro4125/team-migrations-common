@@ -21,6 +21,11 @@ class OnAskMigrationList extends AbstractEvent
 	protected $_errorMessage;
 
 	/**
+	 * @var int
+	 */
+	protected $_permanent;
+
+	/**
 	 * @param array $list
 	 * @return $this
 	 */
@@ -38,6 +43,26 @@ class OnAskMigrationList extends AbstractEvent
 	public function getMigrations()
 	{
 		return $this->_migrations ?: [];
+	}
+
+	/**
+	 * @param int $time
+	 * @return $this
+	 */
+	public function setPermanent($time)
+	{
+		assert((string)(int)$time === (string)$time); // ;-)
+
+		$this->_permanent = max((int)$this->_permanent, (int)$time);
+		return $this;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getPermanent()
+	{
+		return (int)$this->_permanent;
 	}
 
 	/**

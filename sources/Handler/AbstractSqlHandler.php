@@ -63,9 +63,9 @@ abstract class AbstractSqlHandler extends AbstractHandler
 		if ($this->_isTableExists($this->_migrationsTableName))
 		{
 			$list = [];
-			$columns = [self::COL_NAME, self::COL_CREATED];
+			$columns = [self::COL_NAME, self::COL_CREATED, self::COL_TYPE];
 
-			$this->_selectFromTable($this->_migrationsTableName, $columns, function($record) use (&$list)
+			$this->_selectFromTable($this->_migrationsTableName, $columns, function($record) use (&$list, $event)
 			{
 				list($module, $file, $step) = explode(':', $record[self::COL_NAME]);
 				$name = "$module:$file";
@@ -78,6 +78,11 @@ abstract class AbstractSqlHandler extends AbstractHandler
 				if ((int)$step)
 				{
 					$list[$name] .= '|' . $step;
+				}
+
+				if ($record[self::COL_TYPE] == MigrationManager::PERMANENT)
+				{
+					$event->setPermanent((string)strtotime($record[self::COL_CREATED]));
 				}
 			});
 
@@ -212,7 +217,7 @@ abstract class AbstractSqlHandler extends AbstractHandler
 								$event->getMigrationName() . ':' . $step,
 								$record[MigrationManager::ROLLBACK_KEY_TYPE],
 								$migrationTime,
-								date(self::DATE_TIME_FORMAT, time()),
+								date(self::DATE_TIME_FORMAT, self::_generateAppliedTime()),
 								$record[MigrationManager::ROLLBACK_KEY_CODE],
 								$record[MigrationManager::ROLLBACK_KEY_ARGS],
 								$record[MigrationManager::ROLLBACK_KEY_SIGN]
