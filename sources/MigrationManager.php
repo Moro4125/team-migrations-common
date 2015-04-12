@@ -59,6 +59,7 @@ class MigrationManager implements SplSubject
 	const ERROR_EVENT_NOT_RECEIVE  = 'Service "team-migrations.%1$s" does not receive event "%2$s"';
 	const ERROR_WRONG_EVENT_RESULT = 'Wrong result of event %1$s: %2$s';
 	const ERROR_WRONG_PHP_SYNTAX   = 'The PHP script of migration "%1$s" has wrong syntax.';
+	const ERROR_WRONG_PROJECT_NAME = 'Project name was not find in file "%1$s".';
 
 	const STATE_INITIALIZED        = 0;
 	const STATE_FIRED              = 1;
@@ -92,6 +93,11 @@ class MigrationManager implements SplSubject
 	 * @var string
 	 */
 	protected $_projectPath;
+
+	/**
+	 * @var string
+	 */
+	protected $_projectName;
 
 	/**
 	 * @var string
@@ -253,6 +259,27 @@ class MigrationManager implements SplSubject
 	}
 
 	/**
+	 * @return string
+	 * @throws Exception
+	 */
+	public function getProjectName()
+	{
+		if (empty($this->_projectName) && $projectPath = $this->getProjectPath())
+		{
+			$meta = json_decode(@file_get_contents($file = $projectPath.DIRECTORY_SEPARATOR.self::COMPOSER_FILE), true);
+
+			if (empty($meta) || empty($meta['name']))
+			{
+				throw new Exception(sprintf(self::ERROR_WRONG_PROJECT_NAME, $file));
+			}
+
+			$this->_projectName = $meta['name'];
+		}
+
+		return $this->_projectName;
+	}
+
+	/**
 	 * @return int
 	 */
 	public function getState()
@@ -358,6 +385,67 @@ class MigrationManager implements SplSubject
 		}
 
 		return $this;
+	}
+
+	/**
+	 * Create INI file template for new migration.
+	 *
+	 * @param callable $callbackAskNameAndService
+	 */
+	public function doCreate(callable $callbackAskNameAndService)
+	{
+		assert($this->_dispatcher);
+		assert($this->_container);
+
+		$this->_clearStatProperties();
+		$this->_dispatcher->dispatch(self::EVENT_INIT_SERVICE, OnInitService::create());
+
+		try
+		{
+			$this->notify(self::STATE_FIRED);
+
+			$modulesAndFiles = $this->_findModulesAndMigrationFiles();
+			$migrations      = $this->_parseMigrationFiles($modulesAndFiles);
+
+			$folders = array_map('dirname', $modulesAndFiles[$this->getProjectName()]);
+			asort($folders);
+
+			$migrationsPath = reset($folders) ?: $this->getProjectPath().DIRECTORY_SEPARATOR.'migrations';
+			file_exists($migrationsPath) || mkdir($migrationsPath, 0775, true);
+
+			$this->notify(self::STATE_FIND_MIGRATIONS);
+			list($name, $service) = $callbackAskNameAndService(array_keys($folders), array_keys($migrations));
+
+			if ($name && $service)
+			{
+				file_put_contents($migrationsPath.DIRECTORY_SEPARATOR.$name.'.ini', implode("\n", [
+					"; File $name.ini by ".(getenv('USERNAME') ?: getenv('USER') ?: 'unknown user'),
+					'',
+					'['.self::INI_SECTION_MIGRATION.']',
+					self::INI_KEY_CREATED.'="'.date('Y-m-d H:i O').'"',
+					self::INI_KEY_SERVICE.'="'.$service.'"',
+					'',
+					'['.self::INI_SECTION_ACTIONS.']',
+					'a001="php> echo \'Migration applied!\'.PHP_EOL;"',
+					'r001="php> echo \'Migration rejected!\'.PHP_EOL;"',
+					'',
+				]));
+			}
+
+			$this->notify(self::STATE_COMPLETE);
+		}
+		catch (Exception $exception)
+		{
+			$this->_printError($exception);
+			$this->notify(self::STATE_COMPLETE);
+		}
+		finally
+		{
+			$this->_stateMigrationName = null;
+			$this->_state = self::STATE_INITIALIZED;
+
+			$this->_dispatcher->dispatch(self::EVENT_FREE_SERVICE, OnFreeService::create());
+		}
 	}
 
 	/**
