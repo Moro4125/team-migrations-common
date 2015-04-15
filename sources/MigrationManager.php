@@ -525,7 +525,7 @@ class MigrationManager implements SplSubject
 		$callPhpScript = function($event, $hash, $key, $script, $arguments) use ($call) {
 			try
 			{
-				$errorReporting = error_reporting(E_ALL | E_STRICT | E_NOTICE);
+				$errorReporting = error_reporting(E_ALL | E_STRICT);
 
 				if (!$this->_evalCheckSyntax($script))
 				{
@@ -536,8 +536,11 @@ class MigrationManager implements SplSubject
 				}
 
 				set_error_handler(function($severity, $message, $file = null, $line = null) {
-					throw new ErrorException($message, 0, $severity, $file, $line);
-				}, E_ALL | E_STRICT | E_NOTICE);
+					if (error_reporting() & $severity)
+					{
+						throw new ErrorException($message, 0, $severity, $file, $line);
+					}
+				}, E_ALL | E_STRICT);
 
 				/** @var \Moro\Migration\Event\OnAskMigrationApply $event */
 				$service = $this->_container->offsetGet($event->getServiceName());

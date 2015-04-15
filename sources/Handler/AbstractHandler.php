@@ -4,6 +4,8 @@
  */
 namespace Moro\Migration\Handler;
 use \Symfony\Component\Console\Output\OutputInterface;
+use \Symfony\Component\Console\Formatter\OutputFormatter;
+use \Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use \Symfony\Component\EventDispatcher\Event;
 use \Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use \Moro\Migration\MigrationManager;
@@ -34,14 +36,21 @@ abstract class AbstractHandler implements EventSubscriberInterface
 	protected $_output;
 
 	/**
+	 * @var bool
+	 */
+	protected $_newLine;
+
+	/**
 	 * Returns an array of event names this subscriber wants to listen to.
 	 */
 	static function getSubscribedEvents()
 	{
 		return [
+			MigrationManager::EVENT_INIT_SERVICE           => 'update',
 			MigrationManager::EVENT_ASK_MIGRATION_LIST     => 'update',
 			MigrationManager::EVENT_ASK_MIGRATION_APPEND   => 'update',
 			MigrationManager::EVENT_ASK_MIGRATION_ROLLBACK => 'update',
+			MigrationManager::EVENT_FREE_SERVICE           => 'update',
 		];
 	}
 
@@ -111,7 +120,8 @@ abstract class AbstractHandler implements EventSubscriberInterface
 	 */
 	public function write($message)
 	{
-		$this->_output && $this->_output->write($message);
+		$this->_output && $this->_output->write(($this->_newLine ? '  ' : '')."<info>$message</info>");
+		$this->_newLine = false;
 		return $this;
 	}
 
@@ -121,12 +131,14 @@ abstract class AbstractHandler implements EventSubscriberInterface
 	 */
 	public function writeln($message)
 	{
-		$this->_output && $this->_output->writeln($message);
+		$this->_newLine = true;
+		$this->_output && $this->_output->writeln("<info>  $message  </info>");
 		return $this;
 	}
 
 	/**
 	 * @param string $message
+	 * @throws RuntimeException
 	 */
 	public function error($message)
 	{
@@ -139,6 +151,16 @@ abstract class AbstractHandler implements EventSubscriberInterface
 	protected function _onInitService(OnInitService $event)
 	{
 		$this->_output = $event->getOutput();
+
+		if (!$formatter = $this->_output->getFormatter())
+		{
+			$formatter = new OutputFormatter(true);
+			$this->_output->setFormatter($formatter);
+		}
+
+		$formatter->setStyle('warning', new OutputFormatterStyle('magenta'));
+		$formatter->setStyle('error',   new OutputFormatterStyle('red'));
+		$formatter->setStyle('info',    new OutputFormatterStyle('blue'));
 	}
 
 	/**
