@@ -176,13 +176,18 @@ abstract class AbstractSqlHandler extends AbstractHandler
 						if ($this->_beforeCallPhpScript())
 						{
 							$event->callPhpScript();
-							$this->_afterCallPhpScript($event->getResultsOfCall());
+
+							if (null !== $resultsOfCall = $this->_afterCallPhpScript($event->getResultsOfCall()))
+							{
+								$event->setResultsOfCall($resultsOfCall);
+							}
 						}
 						break;
 
 					// If detected unknown migration type.
 					default:
-						$event->setException(new Exception('Unknown migration type.'));
+						$message = sprintf(self::ERROR_UNKNOWN_TYPE, $event->getType(), $event->getMigrationName());
+						$event->setException(new Exception($message));
 				}
 			}
 			// Commit information about migration and rollback scripts to migration table.
@@ -277,7 +282,8 @@ abstract class AbstractSqlHandler extends AbstractHandler
 
 					// If detected unknown migration type.
 					default:
-						$event->setException(new Exception("Unknown migration type: ".$rec[self::COL_TYPE]));
+						$message = sprintf(self::ERROR_UNKNOWN_TYPE, $rec[self::COL_TYPE], $event->getMigrationName());
+						$event->setException(new Exception($message));
 				}
 			}
 
@@ -298,9 +304,11 @@ abstract class AbstractSqlHandler extends AbstractHandler
 
 	/**
 	 * @param null|mixed $results
+	 * @return mixed
 	 */
 	protected function _afterCallPhpScript($results = null)
 	{
+		return $results;
 	}
 
 	/**

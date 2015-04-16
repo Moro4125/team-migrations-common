@@ -14,7 +14,7 @@ use \Exception;
  * Class AbstractSubscriber
  * @package Moro\Migration\Handler
  *
- * Please, do not remember init property $storagePath and create storage folder.
+ * Please, do not remember set property $storagePath and create storage folder.
  */
 class FilesStorageHandler extends AbstractHandler
 {
@@ -24,7 +24,6 @@ class FilesStorageHandler extends AbstractHandler
 
 	const ERROR_EMPTY_STORAGE_PATH = 'Property "storagePath" is empty.';
 	const ERROR_BAD_STORAGE_PATH   = 'Access to storage path "%1$s" is denied.';
-	const ERROR_UNKNOWN_TYPE       = 'Unknown migration type "%1$s" in migration $2$s.';
 
 	const KEY_NAME      = 'name';
 	const KEY_TYPE      = 'type';
@@ -182,7 +181,7 @@ class FilesStorageHandler extends AbstractHandler
 
 				default:
 					$message = sprintf(self::ERROR_UNKNOWN_TYPE, $event->getType(), $event->getMigrationName());
-					$event->setException(new Exception($message, 1));
+					$event->setException(new Exception($message));
 			}
 		}
 		else
@@ -238,7 +237,7 @@ class FilesStorageHandler extends AbstractHandler
 
 				default:
 					$message = sprintf(self::ERROR_UNKNOWN_TYPE, $type, $event->getMigrationName());
-					$event->setException(new Exception($message, 2));
+					$event->setException(new Exception($message));
 			}
 		}
 

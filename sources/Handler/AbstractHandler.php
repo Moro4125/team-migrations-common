@@ -23,6 +23,11 @@ use \RuntimeException;
  */
 abstract class AbstractHandler implements EventSubscriberInterface
 {
+	const ERROR_UNKNOWN_TYPE = 'Error: Unknown script type "%1$s" detected in migration "%2$s".';
+
+	/**
+	 * @var int
+	 */
 	protected static $_lastAppliedTime = 0;
 
 	/**
@@ -61,6 +66,15 @@ abstract class AbstractHandler implements EventSubscriberInterface
 	{
 		self::$_lastAppliedTime = max(self::$_lastAppliedTime + 1, time());
 		return self::$_lastAppliedTime;
+	}
+
+	/**
+	 * @param null|string $serviceName
+	 */
+	public function __construct($serviceName = null)
+	{
+		is_string($serviceName) && $this->_serviceName = $serviceName;
+		$this->_newLine = true;
 	}
 
 	/**
@@ -133,6 +147,17 @@ abstract class AbstractHandler implements EventSubscriberInterface
 	{
 		$this->_newLine = true;
 		$this->_output && $this->_output->writeln("<info>  $message  </info>");
+		return $this;
+	}
+
+	/**
+	 * @param string|array $message
+	 * @return $this
+	 */
+	public function warning($message)
+	{
+		$this->_newLine = true;
+		$this->_output && $this->_output->writeln("<warning>  $message  </warning>");
 		return $this;
 	}
 
