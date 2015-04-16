@@ -24,7 +24,7 @@ use \ErrorException;
  */
 class MigrationManager implements SplSubject
 {
-	const VERSION = '1.4.0-dev';
+	const VERSION = '1.3.1';
 
 	const EVENT_INIT_SERVICE           = 'team-migrations.init_service';
 	const EVENT_ASK_MIGRATION_LIST     = 'team-migrations.ask_migration_list';
