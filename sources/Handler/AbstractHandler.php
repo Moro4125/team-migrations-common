@@ -150,17 +150,18 @@ abstract class AbstractHandler implements EventSubscriberInterface
 	 */
 	protected function _onInitService(OnInitService $event)
 	{
-		$this->_output = $event->getOutput();
-
-		if (!$formatter = $this->_output->getFormatter())
+		if ($this->_output = $event->getOutput())
 		{
-			$formatter = new OutputFormatter(true);
-			$this->_output->setFormatter($formatter);
-		}
+			if (!$formatter = $this->_output->getFormatter())
+			{
+				$formatter = new OutputFormatter(true);
+				$this->_output->setFormatter($formatter);
+			}
 
-		$formatter->setStyle('warning', new OutputFormatterStyle('magenta'));
-		$formatter->setStyle('error',   new OutputFormatterStyle('red'));
-		$formatter->setStyle('info',    new OutputFormatterStyle('blue'));
+			$formatter->setStyle('warning', new OutputFormatterStyle('magenta'));
+			$formatter->setStyle('error',   new OutputFormatterStyle('red'));
+			$formatter->setStyle('info',    new OutputFormatterStyle('blue'));
+		}
 	}
 
 	/**
