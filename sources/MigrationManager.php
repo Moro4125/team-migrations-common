@@ -428,7 +428,7 @@ class MigrationManager implements SplSubject
 			}
 			else
 			{
-				file_put_contents($migrationsPath.DIRECTORY_SEPARATOR.$name.'.ini', implode("\n", [
+				$this->_filePutContents($migrationsPath.DIRECTORY_SEPARATOR.$name.'.ini', implode("\n", [
 					"; File $name.ini by ".(getenv('USERNAME') ?: getenv('USER') ?: 'unknown user'),
 					'',
 					'['.self::INI_SECTION_MIGRATION.']',
@@ -456,6 +456,18 @@ class MigrationManager implements SplSubject
 
 			$this->_dispatcher->dispatch(self::EVENT_FREE_SERVICE, OnFreeService::create());
 		}
+	}
+
+	/**
+	 * @param string $filename
+	 * @param string $data
+	 * @param null|int $flags
+	 * @param null|resource $context
+	 * @return int
+	 */
+	protected function _filePutContents($filename, $data, $flags = null, $context = null)
+	{
+		return file_put_contents($filename, $data, $flags, $context);
 	}
 
 	/**
@@ -607,6 +619,7 @@ class MigrationManager implements SplSubject
 	 */
 	public function notify($state = null)
 	{
+		assert($state === null || is_int($state));
 		$this->_state = intval($state) ?: $this->_state;
 
 		/** @var \SplObserver $observer */
@@ -641,6 +654,7 @@ class MigrationManager implements SplSubject
 			->files()->name('*.ini')->name(self::COMPOSER_FILE)
 			->in($this->getProjectPath())
 			->followLinks()
+			->ignoreUnreadableDirs(true)
 			->ignoreDotFiles(false)
 			->ignoreVCS(true);
 
