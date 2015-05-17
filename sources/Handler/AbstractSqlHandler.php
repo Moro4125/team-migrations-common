@@ -114,7 +114,12 @@ abstract class AbstractSqlHandler extends AbstractHandler
 						$sqlName = @$event->getArguments()['table'];
 						$results = [$sqlName];
 
-						$this->_insertRecords($sqlName, $columns, function() use (&$results, $records, $iLength)
+						while (strncmp(reset($columns), 'where:', 6) == 0)
+						{
+							$where[] = substr(array_shift($columns), 6);
+						}
+
+						$callback = function() use (&$results, $records, $iLength)
 						{
 							$stackSize = count($this->_newIdListStack);
 							$stackHead = [];
@@ -155,9 +160,12 @@ abstract class AbstractSqlHandler extends AbstractHandler
 							{
 								$this->_newIdListStack[] = $stackHead;
 							}
-						});
+						};
 
+						$method = empty($where) ? '_insertRecords' : '_updateRecords';
+						call_user_func([$this, $method], $sqlName, $columns, $callback, empty($where) ? null : $where);
 						$event->setResultsOfCall($results);
+
 						break;
 
 					// Execute custom SQL script.
@@ -336,6 +344,14 @@ abstract class AbstractSqlHandler extends AbstractHandler
 	 * @param callable $callback
 	 */
 	abstract protected function _insertRecords($table, array $columns, callable $callback);
+
+	/**
+	 * @param string $table
+	 * @param array $columns
+	 * @param callable $callback
+	 * @param array $where
+	 */
+	abstract protected function _updateRecords($table, array $columns, callable $callback, array $where);
 
 	/**
 	 * @param string $sql

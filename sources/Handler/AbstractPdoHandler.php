@@ -101,6 +101,29 @@ abstract class AbstractPdoHandler extends AbstractSqlHandler
 	}
 
 	/**
+	 * @param string $table
+	 * @param array $columns
+	 * @param callable $callback
+	 * @param array $where
+	 */
+	protected function _updateRecords($table, array $columns, callable $callback, array $where)
+	{
+		$whereCount = count($where);
+		$columns = implode(', ', array_map(function($col) {return $col.' = ?'; } , $columns));
+		$where = implode(' AND ', array_map(function($col) {return $col.' = ?'; } , $where));
+
+		$statement = $this->getConnection()->prepare($sql = "UPDATE $table SET $columns WHERE $where;");
+
+		/** @var \Generator $generator */
+		foreach (($generator = $callback()) as $record)
+		{
+			$record = array_merge(array_slice($record, $whereCount), array_slice($record, 0, $whereCount));
+			$statement->execute($record);
+			$generator->send(0);
+		}
+	}
+
+	/**
 	 * @param string $sql
 	 */
 	protected function _executeSql($sql)

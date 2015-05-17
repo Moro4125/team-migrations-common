@@ -149,6 +149,37 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 	}
 
 	/**
+	 * @param string $table
+	 * @param array $columns
+	 * @param callable $callback
+	 * @param array $where
+	 */
+	protected function _updateRecords($table, array $columns, callable $callback, array $where)
+	{
+		$query = $this->newQuery()->update($table);
+
+		foreach ($columns as $col)
+		{
+			$query->set($col, '?');
+		}
+
+		foreach ($where as $col)
+		{
+			$query->andWhere($col.' = ?');
+		}
+
+		$statement = $this->getConnection()->prepare($query->getSQL());
+
+		/** @var \Generator $generator */
+		foreach (($generator = $callback()) as $record)
+		{
+			$record = array_merge(array_slice($record, count($where)), array_slice($record, 0, count($where)));
+			$statement->execute($record);
+			$generator->send(0);
+		}
+	}
+
+	/**
 	 * @param string $sql
 	 */
 	protected function _executeSql($sql)
