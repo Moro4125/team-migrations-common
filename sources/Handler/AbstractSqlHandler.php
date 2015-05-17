@@ -25,6 +25,9 @@ abstract class AbstractSqlHandler extends AbstractHandler
 	const COL_OPTIONS   = 'options';
 	const COL_SIGNATURE = 'signature';
 
+	const MSG_INSERTED  = '%1$s record(s) inserted.';
+	const MSG_UPDATED   = '%1$s record(s) updated.';
+
 	/**
 	 * @var string
 	 */
@@ -106,7 +109,9 @@ abstract class AbstractSqlHandler extends AbstractHandler
 				{
 					// Import from CSV file. Require query parameter "table" in CSV file name in INI file.
 					case 'csv':
-						$records = str_getcsv($event->getScript(), "\n", "\x01");
+						$content = preg_replace('{(^|\\n|\\r)\\s*;[^\\n]*|\\r}', '', $event->getScript());
+
+						$records = array_filter(str_getcsv($content, "\n", "\x01"));
 						$columns = array_map('trim', str_getcsv(array_shift($records)));
 						$records = array_map('str_getcsv', $records);
 
@@ -165,6 +170,9 @@ abstract class AbstractSqlHandler extends AbstractHandler
 						$method = empty($where) ? '_insertRecords' : '_updateRecords';
 						call_user_func([$this, $method], $sqlName, $columns, $callback, empty($where) ? null : $where);
 						$event->setResultsOfCall($results);
+
+						$message = sprintf(empty($where) ? self::MSG_INSERTED : self::MSG_UPDATED, count($results));
+						$this->writeln($message);
 
 						break;
 
