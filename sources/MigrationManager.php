@@ -24,7 +24,7 @@ use \ErrorException;
  */
 class MigrationManager implements SplSubject
 {
-	const VERSION = '1.4.0';
+	const VERSION = '1.4.1';
 
 	const EVENT_INIT_SERVICE           = 'team-migrations.init_service';
 	const EVENT_ASK_MIGRATION_LIST     = 'team-migrations.ask_migration_list';
@@ -33,6 +33,9 @@ class MigrationManager implements SplSubject
 	const EVENT_FREE_SERVICE           = 'team-migrations.free_service';
 
 	const COMPOSER_FILE = 'composer.json';
+
+	const MASK_MODULE_WITH_FILE = '~^(\w+([-./]\w+)*):\w+([-.]\w+)*$~';
+	const MASK_LIST_VALUES      = '~\d+(\|\d+)*~';
 
 	const INI_SECTION_MIGRATION = 'migration';
 	const INI_SECTION_FILTERS   = 'filters';
@@ -52,6 +55,7 @@ class MigrationManager implements SplSubject
 	const ROLLBACK_KEY_CODE = 'code';
 	const ROLLBACK_KEY_SIGN = 'sign';
 
+	const ERROR_BAD_FILE_NAME      = 'File "%1$s" has wrong chars in his name.';
 	const ERROR_EMPTY_INI_SECTION  = 'File "%1$s.ini" does not have section "%2$s" or section is empty.';
 	const ERROR_EMPTY_INI_KEY      = 'File "%1$s.ini" does not have key "%2$s" in section "%3$s".';
 	const ERROR_UNKNOWN_FILTER     = 'File "%1$s.ini" has unknown filter "%2$s" in same section.';
@@ -714,7 +718,15 @@ class MigrationManager implements SplSubject
 		{
 			foreach ($iniFiles as $path)
 			{
-				$files[$module.':'.basename($path, '.ini')] = $path;
+				$key = $module.':'.basename($path, '.ini');
+
+				if (!preg_match(self::MASK_MODULE_WITH_FILE, $key))
+				{
+					$this->_printError(sprintf(self::ERROR_BAD_FILE_NAME, basename($path)));
+					continue;
+				}
+
+				$files[$key] = $path;
 			}
 		}
 
@@ -945,7 +957,7 @@ class MigrationManager implements SplSubject
 
 			foreach ($event->getMigrations() as $key => $value)
 			{
-				if (!preg_match('~^(\w+([-./]\w+)*):\w+([-.]\w+)*$~', $key, $m) || !preg_match('~\d+(\|\d+)*~', $value))
+				if (!preg_match(self::MASK_MODULE_WITH_FILE, $key, $m) || !preg_match(self::MASK_LIST_VALUES, $value))
 				{
 					$value = " \"$key\" => \"$value\".";
 					$this->_printError(sprintf(self::ERROR_WRONG_EVENT_RESULT, self::EVENT_ASK_MIGRATION_LIST, $value));
