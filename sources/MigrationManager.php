@@ -574,8 +574,6 @@ class MigrationManager implements SplSubject
 				error_reporting($errorReporting);
 				restore_error_handler();
 			}
-
-			return null;
 		};
 
 		$this->_dispatcher->dispatch(self::EVENT_INIT_SERVICE, OnInitService::create()->setOutput($output));
