@@ -27,6 +27,10 @@ abstract class AbstractSqlHandler extends AbstractHandler
 
 	const MSG_INSERTED  = '%1$s record(s) inserted.';
 	const MSG_UPDATED   = '%1$s record(s) updated.';
+	const MSG_TABLE_NAME = 'CSV file name required table name as query parameter "table".';
+
+	const PCRE_COLUMN_NAME  = '{^([^(]+[(])([^,)]+)([,)].*?)$}';
+	const PCRE_COLUMN_VALUE = '{^([^(]+[(])([^,)]+)([,)].*?)$|^.*$}';
 
 	/**
 	 * @var string
@@ -118,6 +122,12 @@ abstract class AbstractSqlHandler extends AbstractHandler
 						$iLength = count($columns);
 						$sqlName = @$event->getArguments()['table'];
 						$results = [$sqlName];
+
+						if (empty($sqlName))
+						{
+							$event->setException(new Exception(self::MSG_TABLE_NAME));
+							break;
+						}
 
 						while (strncmp(reset($columns), 'where:', 6) == 0)
 						{

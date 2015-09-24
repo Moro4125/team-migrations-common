@@ -86,11 +86,16 @@ abstract class AbstractPdoHandler extends AbstractSqlHandler
 	 */
 	protected function _insertRecords($table, array $columns, callable $callback)
 	{
-		$sqlCols = implode(', ', $columns);
-		$sqlVars = implode(', ', array_fill(0, count($columns), '?'));
+		$sqlCols = implode(', ', array_map(function($value) {
+			return preg_replace(self::PCRE_COLUMN_NAME, '$2', $value);
+		}, $columns));
+
+		$sqlVars = implode(', ', array_map(function($value) {
+			return preg_replace(self::PCRE_COLUMN_VALUE, '$1?$3', $value);
+		}, $columns));
 
 		$connection = $this->getConnection();
-		$statement = $connection->prepare($sql = "INSERT INTO $table ($sqlCols) VALUES ($sqlVars);");
+		$statement = $connection->prepare("INSERT INTO $table ($sqlCols) VALUES ($sqlVars);");
 
 		/** @var \Generator $generator */
 		foreach (($generator = $callback()) as $record)
@@ -108,8 +113,13 @@ abstract class AbstractPdoHandler extends AbstractSqlHandler
 	 */
 	protected function _updateRecords($table, array $columns, callable $callback, array $where)
 	{
+		$columns = implode(', ',  array_map(function($value) {
+			$column = preg_replace(self::PCRE_COLUMN_NAME, '$2', $value);
+			$value  = preg_replace(self::PCRE_COLUMN_VALUE, '$1?$3', $value);
+			return $column.' = '.$value;
+		} , $columns));
+
 		$whereCount = count($where);
-		$columns = implode(', ',  array_map(function($col) {return $col.' = ?'; } , $columns));
 		$where = implode(' AND ', array_map(function($col) {return $col.' = ?'; } , $where));
 
 		$statement = $this->getConnection()->prepare("UPDATE $table SET $columns WHERE $where;");

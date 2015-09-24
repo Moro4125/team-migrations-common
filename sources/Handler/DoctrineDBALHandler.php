@@ -69,6 +69,7 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 
 	/**
 	 * @param null|mixed $results
+	 * @return mixed
 	 */
 	protected function _afterCallPhpScript($results = null)
 	{
@@ -82,6 +83,7 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		}
 
 		$this->_schema = null;
+		return null;
 	}
 
 	/**
@@ -136,8 +138,17 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 	 */
 	protected function _insertRecords($table, array $columns, callable $callback)
 	{
+		$values = array_combine(
+			array_map(function($value) {
+				return preg_replace(self::PCRE_COLUMN_NAME, '$2', $value);
+			}, $columns),
+			array_map(function($value) {
+				return preg_replace(self::PCRE_COLUMN_VALUE, '$1?$3', $value);
+			}, $columns)
+		);
+
 		$connection = $this->getConnection();
-		$query = $this->newQuery()->insert($table)->values(array_fill_keys($columns, '?'))->getSQL();
+		$query = $this->newQuery()->insert($table)->values($values)->getSQL();
 		$statement = $connection->prepare($query);
 
 		/** @var \Generator $generator */
@@ -158,9 +169,11 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 	{
 		$query = $this->newQuery()->update($table);
 
-		foreach ($columns as $col)
+		foreach ($columns as $value)
 		{
-			$query->set($col, '?');
+			$column = preg_replace(self::PCRE_COLUMN_NAME, '$2', $value);
+			$value  = preg_replace(self::PCRE_COLUMN_VALUE, '$1?$3', $value);
+			$query->set($column, $value);
 		}
 
 		foreach ($where as $col)
