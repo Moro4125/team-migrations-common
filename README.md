@@ -10,7 +10,7 @@ Migrations system for storage structure and database schema.
 - [symfony/finder](https://github.com/symfony/Finder) ~2.0
 
 ## Installation
-    php composer.phar require moro/team-migrations-common "dev-master"
+    php composer.phar require moro/team-migrations-common "~1.5"
 
 ## License
 Package __moro/team-migrations-common__ is licensed under the MIT license.
