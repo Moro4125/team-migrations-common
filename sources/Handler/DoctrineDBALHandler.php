@@ -4,6 +4,7 @@
  */
 namespace Moro\Migration\Handler;
 use \Doctrine\DBAL\Connection;
+use \Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use \PDO;
 use \Exception;
 
@@ -154,8 +155,16 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		/** @var \Generator $generator */
 		foreach (($generator = $callback()) as $record)
 		{
-			$statement->execute($record);
-			$generator->send($connection->lastInsertId());
+			try
+			{
+				$statement->execute($record);
+				$generator->send($connection->lastInsertId());
+			}
+			catch (UniqueConstraintViolationException $exception)
+			{
+				$this->warning('Skip record: '.implode(', ', $record));
+				$generator->send(0);
+			}
 		}
 	}
 

@@ -181,6 +181,7 @@ abstract class AbstractSqlHandler extends AbstractHandler
 						call_user_func([$this, $method], $sqlName, $columns, $callback, empty($where) ? null : $where);
 						$event->setResultsOfCall($results);
 
+						$results = array_filter($results);
 						$message = sprintf(empty($where) ? self::MSG_INSERTED : self::MSG_UPDATED, count($results) - 1);
 						$this->writeln($message);
 
