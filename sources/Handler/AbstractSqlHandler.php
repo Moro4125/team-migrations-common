@@ -27,6 +27,7 @@ abstract class AbstractSqlHandler extends AbstractHandler
 
 	const MSG_INSERTED  = '%1$s record(s) inserted.';
 	const MSG_UPDATED   = '%1$s record(s) updated.';
+	const MSG_DELETED   = '%1$s record(s) deleted.';
 	const MSG_TABLE_NAME = 'CSV file name required table name as query parameter "table".';
 
 	const PCRE_COLUMN_NAME  = '{^([^(]+[(])([^,)]+)([,)].*?)$}';
@@ -177,12 +178,13 @@ abstract class AbstractSqlHandler extends AbstractHandler
 							}
 						};
 
-						$method = empty($where) ? '_insertRecords' : '_updateRecords';
+						$method = empty($where) ? '_insertRecords' :( $columns ? '_updateRecords' : '_deleteRecords');
 						call_user_func([$this, $method], $sqlName, $columns, $callback, empty($where) ? null : $where);
-						$event->setResultsOfCall($results);
+						$event->setResultsOfCall(empty($where) ? $results : []);
 
-						$message = sprintf(empty($where) ? self::MSG_INSERTED : self::MSG_UPDATED, count($results) - 1);
-						$this->writeln($message);
+						$message = empty($where) ? self::MSG_INSERTED :( $columns ? self::MSG_UPDATED : self::MSG_DELETED);
+						$cnt = empty($where) ? count(array_filter($results)) - 1 : array_sum($results);
+						$this->writeln(sprintf($message, $cnt));
 
 						break;
 
@@ -370,6 +372,14 @@ abstract class AbstractSqlHandler extends AbstractHandler
 	 * @param array $where
 	 */
 	abstract protected function _updateRecords($table, array $columns, callable $callback, array $where);
+
+	/**
+	 * @param string $table
+	 * @param null $reserved
+	 * @param callable $callback
+	 * @param array $where
+	 */
+	abstract protected function _deleteRecords($table, $reserved, callable $callback, array $where);
 
 	/**
 	 * @param string $sql
