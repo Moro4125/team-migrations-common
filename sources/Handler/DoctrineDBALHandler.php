@@ -197,7 +197,33 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		{
 			$record = array_merge(array_slice($record, count($where)), array_slice($record, 0, count($where)));
 			$statement->execute($record);
-			$generator->send(0);
+			$generator->send($statement->rowCount());
+		}
+	}
+
+	/**
+	 * @param string $table
+	 * @param null $reserved
+	 * @param callable $callback
+	 * @param array $where
+	 */
+	protected function _deleteRecords($table, $reserved, callable $callback, array $where)
+	{
+		unset($reserved);
+		$query = $this->newQuery()->delete($table);
+
+		foreach ($where as $col)
+		{
+			$query->andWhere($col.' = ?');
+		}
+
+		$statement = $this->getConnection()->prepare($query->getSQL());
+
+		/** @var \Generator $generator */
+		foreach (($generator = $callback()) as $record)
+		{
+			$statement->execute($record);
+			$generator->send($statement->rowCount());
 		}
 	}
 

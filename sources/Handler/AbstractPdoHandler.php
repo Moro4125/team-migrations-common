@@ -147,7 +147,28 @@ abstract class AbstractPdoHandler extends AbstractSqlHandler
 		{
 			$record = array_merge(array_slice($record, $whereCount), array_slice($record, 0, $whereCount));
 			$statement->execute($record);
-			$generator->send(0);
+			$generator->send($statement->rowCount());
+		}
+	}
+
+	/**
+	 * @param string $table
+	 * @param null $reserved
+	 * @param callable $callback
+	 * @param array $where
+	 */
+	protected function _deleteRecords($table, $reserved, callable $callback, array $where)
+	{
+		unset($reserved);
+
+		$where = implode(' AND ', array_map(function($col) {return $col.' = ?'; } , $where));
+		$statement = $this->getConnection()->prepare("DELETE FROM $table WHERE $where;");
+
+		/** @var \Generator $generator */
+		foreach (($generator = $callback()) as $record)
+		{
+			$statement->execute($record);
+			$generator->send($statement->rowCount());
 		}
 	}
 
