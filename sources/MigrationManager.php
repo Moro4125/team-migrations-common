@@ -24,7 +24,7 @@ use \ErrorException;
  */
 class MigrationManager implements SplSubject
 {
-	const VERSION = '1.6.1';
+	const VERSION = '1.6.2';
 
 	const EVENT_INIT_SERVICE           = 'team-migrations.init_service';
 	const EVENT_ASK_MIGRATION_LIST     = 'team-migrations.ask_migration_list';
@@ -262,6 +262,14 @@ class MigrationManager implements SplSubject
 		assert(is_string($key));
 		$this->_validationKey = $key;
 		return $this;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getValidationKey()
+	{
+		return (string)$this->_validationKey;
 	}
 
 	/**
@@ -560,7 +568,7 @@ class MigrationManager implements SplSubject
 
 				/** @var \Moro\Migration\Event\OnAskMigrationApply $event */
 				$service = $this->_container->offsetGet($event->getServiceName());
-				return $call($this->_container, $service, $arguments, trim($script), $hash, $this->_validationKey.$key);
+				return $call($this->_container, $service, $arguments, trim($script), $hash, $this->getValidationKey().$key);
 			}
 			catch (Exception $exception)
 			{
@@ -1065,7 +1073,7 @@ class MigrationManager implements SplSubject
 					->setServiceName($service)
 					->setMigrationName($migrationName)
 					->setStep($step)
-					->setValidationKey((string)$this->_validationKey)
+					->setValidationKey($this->getValidationKey())
 					->setCallPhpScriptCallback($callPhpScript);
 
 				$this->_dispatcher->dispatch(self::EVENT_ASK_MIGRATION_ROLLBACK, $event);
@@ -1205,10 +1213,10 @@ class MigrationManager implements SplSubject
 					->setStep($step)
 					->setTime($migrationTime)
 					->setType($migrationFile[$step]['type'])
-					->setHash(sha1($this->_validationKey.$migrationFile[$step]['code']))
+					->setHash(sha1($this->getValidationKey().$migrationFile[$step]['code']))
 					->setArguments($migrationFile[$step]['args'] ?: [])
 					->setScript($migrationFile[$step]['code'])
-					->setValidationKey((string)$this->_validationKey)
+					->setValidationKey($this->getValidationKey())
 					->setPhpScriptCallback($callPhpScript);
 
 				$this->_dispatcher->dispatch(self::EVENT_ASK_MIGRATION_APPEND, $event);
@@ -1218,7 +1226,7 @@ class MigrationManager implements SplSubject
 					$result = is_array($event->getResultsOfCall()) ? $event->getResultsOfCall() : null;
 					$migrationBack[$service][$step][self::ROLLBACK_KEY_ARGS] = $result ? json_encode($result) : null;
 
-					$signature = sha1($this->_validationKey.implode('', $migrationBack[$service][$step]));
+					$signature = sha1($this->getValidationKey().implode('', $migrationBack[$service][$step]));
 					$migrationBack[$service][$step][self::ROLLBACK_KEY_SIGN] = $signature;
 				}
 
@@ -1254,7 +1262,7 @@ class MigrationManager implements SplSubject
 				{
 					if (empty($record[self::ROLLBACK_KEY_SIGN]))
 					{
-						$record[self::ROLLBACK_KEY_SIGN] = sha1($this->_validationKey.implode('', $record));
+						$record[self::ROLLBACK_KEY_SIGN] = sha1($this->getValidationKey().implode('', $record));
 					}
 				}
 
@@ -1264,9 +1272,9 @@ class MigrationManager implements SplSubject
 					->setStep(0)
 					->setTime($migrationTime)
 					->setType($isPermanent ? self::PERMANENT : 'ini')
-					->setHash(sha1($this->_validationKey.trim($migrationFile[0])))
+					->setHash(sha1($this->getValidationKey().trim($migrationFile[0])))
 					->setScript($migrationFile[0])
-					->setValidationKey((string)$this->_validationKey)
+					->setValidationKey($this->getValidationKey())
 					->setRollback($rollbackScripts);
 
 				$this->_dispatcher->dispatch(self::EVENT_ASK_MIGRATION_APPEND, $event);
