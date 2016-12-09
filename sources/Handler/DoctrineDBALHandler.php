@@ -111,7 +111,7 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 
 	/**
 	 * @param callable $callback
-	 * @return null|\Exception
+	 * @return bool|\Exception
 	 */
 	protected function _transaction(callable $callback)
 	{
@@ -121,7 +121,7 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		try
 		{
 			$callback();
-			$connection->commit();
+			$connection->isRollbackOnly() ? $connection->rollBack() : $connection->commit();
 		}
 		catch (Exception $exception)
 		{
