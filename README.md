@@ -12,7 +12,14 @@ Migrations system for storage structure and database schema.
 ## Installation
     php composer.phar require moro/team-migrations-common "~1.6"
 
+## Usage
+    vendor/bin/migrations status
+
+    vendor/bin/migrations migrate
+
+    vendor/bin/migrations create
+
 ## License
 Package __moro/team-migrations-common__ is licensed under the MIT license.
 
-2015-2016
+2015-2017
