@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection PhpComposerExtensionStubsInspection */
 /**
  * Class DoctrineDBALHandler
  */
@@ -68,10 +68,11 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		return $this->getConnection()->createQueryBuilder();
 	}
 
-	/**
-	 * @param null|mixed $results
-	 * @return mixed
-	 */
+    /**
+     * @param null|mixed $results
+     * @return mixed
+     * @throws \Doctrine\DBAL\DBALException
+     */
 	protected function _afterCallPhpScript($results = null)
 	{
 		$connection = $this->getConnection();
@@ -109,10 +110,11 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		}
 	}
 
-	/**
-	 * @param callable $callback
-	 * @return bool|\Exception
-	 */
+    /**
+     * @param callable $callback
+     * @return bool|\Exception
+     * @throws \Doctrine\DBAL\ConnectionException
+     */
 	protected function _transaction(callable $callback)
 	{
 		$connection = $this->getConnection();
@@ -132,11 +134,12 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		return true;
 	}
 
-	/**
-	 * @param string $table
-	 * @param array $columns
-	 * @param callable $callback
-	 */
+    /**
+     * @param string $table
+     * @param array $columns
+     * @param callable $callback
+     * @throws \Doctrine\DBAL\DBALException
+     */
 	protected function _insertRecords($table, array $columns, callable $callback)
 	{
 		$values = array_combine(
@@ -159,7 +162,7 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 			{
 				$statement->execute($record);
 				$generator->send($connection->lastInsertId());
-			}
+			} /** @noinspection PhpRedundantCatchClauseInspection */
 			catch (UniqueConstraintViolationException $exception)
 			{
 				$this->warning('Skip record: '.implode(', ', $record));
@@ -168,12 +171,13 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		}
 	}
 
-	/**
-	 * @param string $table
-	 * @param array $columns
-	 * @param callable $callback
-	 * @param array $where
-	 */
+    /**
+     * @param string $table
+     * @param array $columns
+     * @param callable $callback
+     * @param array $where
+     * @throws \Doctrine\DBAL\DBALException
+     */
 	protected function _updateRecords($table, array $columns, callable $callback, array $where)
 	{
 		$query = $this->newQuery()->update($table);
@@ -201,12 +205,13 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		}
 	}
 
-	/**
-	 * @param string $table
-	 * @param null $reserved
-	 * @param callable $callback
-	 * @param array $where
-	 */
+    /**
+     * @param string $table
+     * @param null $reserved
+     * @param callable $callback
+     * @param array $where
+     * @throws \Doctrine\DBAL\DBALException
+     */
 	protected function _deleteRecords($table, $reserved, callable $callback, array $where)
 	{
 		unset($reserved);
@@ -227,20 +232,22 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		}
 	}
 
-	/**
-	 * @param string $sql
-	 */
+    /**
+     * @param string $sql
+     * @throws \Doctrine\DBAL\DBALException
+     */
 	protected function _executeSql($sql)
 	{
 		$this->getConnection()->exec($sql);
 	}
 
-	/**
-	 * @param string $table
-	 * @param string $primaryKey
-	 * @param mixed $value
-	 * @return array|null
-	 */
+    /**
+     * @param string $table
+     * @param string $primaryKey
+     * @param mixed $value
+     * @return array|null
+     * @throws \Doctrine\DBAL\DBALException
+     */
 	protected function _selectFromTableByPK($table, $primaryKey, $value)
 	{
 		$query = $this->newQuery()->select('*')->from($table)->where("$primaryKey = ?")->getSQL();
@@ -248,11 +255,12 @@ class DoctrineDBALHandler extends AbstractSqlHandler
 		return $statement->execute([$value]) ? $statement->fetch(PDO::FETCH_ASSOC) : null;
 	}
 
-	/**
-	 * @param string $table
-	 * @param string $primaryKey
-	 * @param mixed $value
-	 */
+    /**
+     * @param string $table
+     * @param string $primaryKey
+     * @param mixed $value
+     * @throws \Doctrine\DBAL\DBALException
+     */
 	protected function _deleteFromTableByPK($table, $primaryKey, $value)
 	{
 		$query = $this->newQuery()->delete($table)->where("$primaryKey = ?")->getSQL();

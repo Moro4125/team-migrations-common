@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection PhpComposerExtensionStubsInspection */
 /**
  * Class AbstractPdoHandler
  */
@@ -53,7 +53,7 @@ abstract class AbstractPdoHandler extends AbstractSqlHandler
 
 	/**
 	 * @param callable $callback
-	 * @return null|\Exception
+	 * @return bool|\Exception
 	 */
 	protected function _transaction(callable $callback)
 	{

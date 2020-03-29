@@ -163,10 +163,11 @@ class FilesStorageHandler extends AbstractHandler
 		return true;
 	}
 
-	/**
-	 * @param OnAskMigrationApply $event
-	 * @return bool
-	 */
+    /**
+     * @param OnAskMigrationApply $event
+     * @return bool
+     * @throws Exception
+     */
 	protected function _onAskMigrationApply(OnAskMigrationApply $event)
 	{
 		$pathMigrations = $this->getMigrationsPath();

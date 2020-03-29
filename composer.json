@@ -1,6 +1,7 @@
 {
   "name": "moro/team-migrations-common",
   "type": "library",
+  "description": "Base library for migration feature",
   "version": "1.6.7",
   "license": "MIT",
   "authors": [
@@ -12,12 +13,14 @@
   ],
   "require": {
     "php": ">=5.5",
+    "ext-json": "*",
     "symfony/console": "~2.6|~3.0",
     "symfony/event-dispatcher": "~2.0|~3.0",
     "symfony/finder": "~2.0|~3.0"
   },
   "require-dev": {
-    "doctrine/dbal": "~2.5"
+    "doctrine/dbal": "~2.5",
+    "smi2/phpclickhouse": "1.3.9"
   },
   "autoload": {
     "psr-4": { "Moro\\Migration\\": "sources/" }

@@ -41,6 +41,7 @@ class MigrationManager implements SplSubject
 	const INI_SECTION_FILTERS   = 'filters';
 	const INI_SECTION_ACTIONS   = 'actions';
 
+	const INI_KEY_GUID        = 'guid';
 	const INI_KEY_CREATED     = 'created';
 	const INI_KEY_SERVICE     = 'service';
 	const INI_KEY_PERMANENT   = 'permanent';
@@ -1407,6 +1408,28 @@ class MigrationManager implements SplSubject
 	{
 		assert(self::$_call === null);
 		self::$_call = $call;
+	}
+
+	/**
+	 * @param null|string $data
+	 * @return string
+	 * @throws Exception
+	 */
+	static public function guidV4($data = null)
+	{
+		assert($data === null || is_string($data) && strlen($data) == 16);
+
+		if ($data === null)
+		{
+			$data = function_exists('random_bytes')
+				? random_bytes(16)
+				: openssl_random_pseudo_bytes(16);
+		}
+
+		$data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
+		$data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
+
+		return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 	}
 }
 

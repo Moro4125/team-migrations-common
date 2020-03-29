@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection PhpComposerExtensionStubsInspection */
 /**
  * Trait InteractiveCommand
  */
@@ -66,10 +66,11 @@ trait InteractiveCommand
 		return $this;
 	}
 
-	/**
-	 * @param InputInterface $input
-	 * @param OutputInterface $output
-	 */
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @throws \ReflectionException
+     */
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
 		if ($output->getVerbosity() == OutputInterface::VERBOSITY_QUIET)
@@ -142,7 +143,7 @@ trait InteractiveCommand
 	 * @param InputInterface $input
 	 * @param OutputInterface $output
 	 * @param QuestionHelper $dialog
-	 * @return \Moro\Migration\Handler\FilesStorageHandler
+	 * @return \Moro\Migration\Handler\PdoMySQLHandler
 	 */
 	public function setupHandlerPdoMySQL(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
 	{
@@ -170,7 +171,7 @@ trait InteractiveCommand
 	 * @param InputInterface $input
 	 * @param OutputInterface $output
 	 * @param QuestionHelper $dialog
-	 * @return \Moro\Migration\Handler\FilesStorageHandler
+	 * @return \Moro\Migration\Handler\PdoPostgreSQLHandler
 	 */
 	public function setupHandlerPdoPostgreSQL(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
 	{
@@ -199,7 +200,7 @@ trait InteractiveCommand
 	 * @param InputInterface $input
 	 * @param OutputInterface $output
 	 * @param QuestionHelper $dialog
-	 * @return \Moro\Migration\Handler\FilesStorageHandler
+	 * @return \Moro\Migration\Handler\PdoSQLiteHandler
 	 */
 	public function setupHandlerPdoSQLite(InputInterface $input, OutputInterface $output, QuestionHelper $dialog)
 	{
