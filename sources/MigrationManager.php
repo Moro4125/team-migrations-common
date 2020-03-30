@@ -24,7 +24,7 @@ use \ErrorException;
  */
 class MigrationManager implements SplSubject
 {
-	const VERSION = '1.6.7';
+	const VERSION = '1.7.0';
 
 	const EVENT_INIT_SERVICE           = 'team-migrations.init_service';
 	const EVENT_ASK_MIGRATION_LIST     = 'team-migrations.ask_migration_list';
@@ -1421,7 +1421,8 @@ class MigrationManager implements SplSubject
 
 		if ($data === null)
 		{
-			$data = function_exists('random_bytes')
+            /** @noinspection PhpComposerExtensionStubsInspection */
+            $data = function_exists('random_bytes')
 				? random_bytes(16)
 				: openssl_random_pseudo_bytes(16);
 		}
