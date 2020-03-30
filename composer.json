@@ -2,7 +2,7 @@
   "name": "moro/team-migrations-common",
   "type": "library",
   "description": "Base library for migration feature",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "license": "MIT",
   "authors": [
     {
