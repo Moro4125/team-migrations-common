@@ -49,14 +49,16 @@ class Smi2ClickHouseHandler extends AbstractClickHouseHandler
         $bindings = [];
         $names = 'ABCDEFJHIGKLMNOPQRSTUVWXYZ';
 
-        foreach (array_values($params) as $index => $param) {
+        foreach (array_values($params ?? []) as $index => $param) {
             $char = substr($names, $index, 1);
-            $key = '{'.$char.'}';
+            $key = ':'.$char;
             $sql = substr_replace($sql, $key, strpos($sql, '?'), 1);
             $bindings[$char] = $param;
         }
 
-        while ($record = $this->_client->select($sql, $bindings)->fetchRow()) {
+        $statement = $this->_client->select($sql, $bindings);
+
+        while ($record = $statement->fetchRow()) {
             $results[] = $record;
         }
 
@@ -73,13 +75,19 @@ class Smi2ClickHouseHandler extends AbstractClickHouseHandler
         $bindings = [];
         $names = 'ABCDEFJHIGKLMNOPQRSTUVWXYZ';
 
-        foreach (array_values($params) as $index => $param) {
-            $char = substr($names, $index, 1);
-            $key = '{'.$char.'}';
-            $sql = substr_replace($sql, $key, strpos($sql, '?'), 1);
-            $bindings[$char] = $param;
+        foreach (array_values($params ?? []) as $index => $param) {
+            if ($param !== null) {
+                $char = substr($names, $index, 1);
+                $key = ':' . $char;
+                $sql = substr_replace($sql, $key, strpos($sql, '?'), 1);
+                $bindings[$char] = $param;
+            } else {
+                $sql = substr_replace($sql, 'NULL', strpos($sql, '?'), 1);
+            }
         }
 
-        return $this->_client->transport()->write($sql, $bindings)->count();
+        $this->_client->transport()->write($sql, $bindings);
+
+        return 1;
     }
 }

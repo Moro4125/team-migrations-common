@@ -2,7 +2,7 @@
   "name": "moro/team-migrations-common",
   "type": "library",
   "description": "Base library for migration feature",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "license": "MIT",
   "authors": [
     {
@@ -12,7 +12,7 @@
     }
   ],
   "require": {
-    "php": ">=5.5",
+    "php": ">=7.1",
     "ext-json": "*",
     "symfony/console": "~2.6|~3.0",
     "symfony/event-dispatcher": "~2.0|~3.0",

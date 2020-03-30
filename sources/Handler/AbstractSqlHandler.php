@@ -190,12 +190,15 @@ abstract class AbstractSqlHandler extends AbstractHandler
 
 					// Execute custom SQL script.
 					case 'sql':
+                        $pattern = '{^\\s*[#].*?$}m';
+                        $script = preg_replace($pattern, '', $event->getScript());
+
 						$this->_executeSql(preg_replace_callback('~\{\{(.*?)\}\}~', function($match)
 							{
 								$methodName = 'get'.implode('', array_map('ucfirst', explode('.', $match[1])));
 								return method_exists($this, $methodName) ? $this->{$methodName}() : $match[0];
 							},
-							$event->getScript())
+							$script)
 						);
 						break;
 
@@ -291,6 +294,8 @@ abstract class AbstractSqlHandler extends AbstractHandler
 					case 'sql':
 						if ($event->validateScript($rec[self::COL_SIGNATURE], 'sql', $rec[self::COL_SCRIPT]))
 						{
+						    $pattern = '{^\\s*[#].*?$}m';
+                            $rec[self::COL_SCRIPT] = preg_replace($pattern, '', $rec[self::COL_SCRIPT]);
 							$this->_executeSql($rec[self::COL_SCRIPT]);
 						}
 						else

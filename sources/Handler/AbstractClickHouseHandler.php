@@ -16,7 +16,7 @@ abstract class AbstractClickHouseHandler extends AbstractSqlHandler
      */
     protected function _isTableExists($name)
     {
-        return $this->_callQuery(sprintf('EXISTS TABLE %s', $name))[0][0] == 1;
+        return $this->_callQuery(sprintf('EXISTS TABLE %s', $name))[0]['result'] == 1;
     }
 
     /**
