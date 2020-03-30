@@ -354,7 +354,7 @@ abstract class AbstractSqlHandler extends AbstractHandler
 
 	/**
 	 * @param callable $callback
-	 * @return null|\Exception
+	 * @return bool|\Exception
 	 */
 	abstract protected function _transaction(callable $callback);
 
